@@ -1,0 +1,76 @@
+import type { Information } from "@/lib/information";
+
+// All records are fictional. Dates use a fixed reference so the prototype stays reproducible.
+export const demoInformation: Information[] = [
+  {
+    id: "design-competition", title: "校园空间创意设计赛：把你的点子变成作品", category: "竞赛",
+    summary: "围绕校园公共空间提出设计方案，可以个人或组队参加。适合想第一次尝试设计竞赛的新生。",
+    source: "学校竞赛通知", sourceType: "school", sourcePortal: "https://www.sju.edu.cn/",
+    publishedAt: "2026-10-08T08:30:00+08:00", registrationDeadline: "2026-10-11T18:00:00+08:00", eventStart: "2026-10-18T14:00:00+08:00",
+    freshmanAllowed: "allowed", colleges: ["建筑学院", "土木工程学院"], importance: "high", rewardNote: "示例通知未明确学分或积分。",
+    registrationMethod: "真实接入后展示校内报名方式及作品提交要求。", verification: "示例学校通知", demo: true,
+  },
+  {
+    id: "library-volunteer", title: "图书馆志愿者招募，一起整理书架上的小世界", category: "志愿活动",
+    summary: "协助图书整理与阅读空间维护。报名后需完成现场签到和服务，时长以实际认定为准。",
+    source: "PU口袋校园", sourceType: "pu", sourcePortal: "https://pocketuni.net/",
+    publishedAt: "2026-10-08T09:00:00+08:00", registrationStart: "2026-10-08T12:00:00+08:00", registrationDeadline: "2026-10-08T20:00:00+08:00", eventStart: "2026-10-10T09:00:00+08:00", location: "校图书馆（示例地点）",
+    freshmanAllowed: "allowed", colleges: [], reward: { kind: "志愿时长", value: 2, unit: "小时" }, rewardNote: "示例奖励：完成服务后认定 2 小时志愿时长，不代表学分。", importance: "high",
+    registrationMethod: "真实活动需要在 PU 官方客户端核对名额与资格后报名。", verification: "示例PU活动", demo: true,
+  },
+  {
+    id: "course-selection", title: "新生选课确认：检查你的课表与选课结果", category: "学校通知",
+    summary: "检查课程是否选齐、课表是否冲突。有问题及时联系辅导员或教学秘书，避免错过处理时间。",
+    source: "学校通知公告", sourceType: "school", sourcePortal: "https://www.sju.edu.cn/",
+    publishedAt: "2026-10-08T08:00:00+08:00", registrationDeadline: "2026-10-09T16:00:00+08:00",
+    freshmanAllowed: "allowed", colleges: [], rewardNote: "学生事务通知，不涉及活动奖励。", importance: "high",
+    registrationMethod: "此处是模拟的办理事项，实际办理以教务通知为准。", verification: "示例学校通知", demo: true,
+  },
+  {
+    id: "freshman-lecture", title: "大学第一年，怎样找到自己的学习节奏？", category: "讲座",
+    summary: "从时间安排、专业探索到校园资源使用，一场适合刚入学的你的分享。",
+    source: "PU口袋校园", sourceType: "pu", sourcePortal: "https://pocketuni.net/",
+    publishedAt: "2026-10-08T09:15:00+08:00", registrationDeadline: "2026-10-10T12:00:00+08:00", eventStart: "2026-10-10T18:30:00+08:00", location: "学术报告厅（示例地点）",
+    freshmanAllowed: "allowed", colleges: [], reward: { kind: "PU积分", value: 1, unit: "点" }, rewardNote: "示例奖励：1 点 PU 积分，需按活动规则完成签到；与素质学分分别记录。", importance: "normal",
+    registrationMethod: "通过 PU 官方渠道查找真实活动并报名。", verification: "示例PU活动", demo: true,
+  },
+  {
+    id: "coding-competition", title: "零基础编程挑战：从第一行代码开始", category: "竞赛",
+    summary: "面向编程入门者的练习型挑战，支持单人参加。提前了解题型和提交方式即可。",
+    source: "学校竞赛通知", sourceType: "school", sourcePortal: "https://www.sju.edu.cn/",
+    publishedAt: "2026-10-07T16:00:00+08:00", registrationDeadline: "2026-10-15T18:00:00+08:00", eventStart: "2026-10-17T09:00:00+08:00",
+    freshmanAllowed: "allowed", colleges: ["计算机科学与工程学院"], rewardNote: "示例通知未明确奖励或学分。", importance: "normal",
+    registrationMethod: "正式接入后提供学校通知中的报名入口。", verification: "示例学校通知", demo: true,
+  },
+  {
+    id: "reading-club", title: "新生读书会：带一本你喜欢的书来", category: "PU活动",
+    summary: "用一本书认识新的朋友。报名后按要求完成参与记录，具体奖励须核对官方活动说明。",
+    source: "PU口袋校园", sourceType: "pu", sourcePortal: "https://pocketuni.net/",
+    publishedAt: "2026-10-07T14:00:00+08:00", registrationDeadline: "2026-10-12T18:00:00+08:00", eventStart: "2026-10-14T15:00:00+08:00", location: "阅读交流室（示例地点）",
+    freshmanAllowed: "allowed", colleges: [], reward: { kind: "素质学分", value: 0.2, unit: "分" }, rewardNote: "仅用于展示素质学分标签，不代表三江学院的实际认定规则。", importance: "normal",
+    registrationMethod: "真实活动在 PU 官方客户端报名，认定条件以原通知为准。", verification: "示例PU活动", demo: true,
+  },
+  {
+    id: "national-design", title: "全国大学生创意大赛：先了解，再决定是否参加", category: "竞赛",
+    summary: "第三方平台发现的比赛线索。参赛年级、主办方和校内选拔安排还需要核验。",
+    source: "第三方竞赛线索", sourceType: "competition", sourcePortal: "https://www.sju.edu.cn/",
+    publishedAt: "2026-10-08T07:00:00+08:00", registrationDeadline: "2026-10-22T18:00:00+08:00",
+    freshmanAllowed: "unknown", colleges: [], rewardNote: "奖励未明确，等待官方核验。", importance: "normal",
+    registrationMethod: "核验比赛官网与校内通知后，再提供报名入口。", verification: "示例待核验信息", demo: true,
+  },
+  {
+    id: "campus-guide", title: "新生办事清单：常用校园服务入口一次找齐", category: "校园资讯",
+    summary: "整理校园卡、图书馆、教务和生活服务的常用入口，让第一次办事少走弯路。",
+    source: "学校公众号", sourceType: "wechat", sourcePortal: "https://www.sju.edu.cn/",
+    publishedAt: "2026-10-07T12:00:00+08:00", freshmanAllowed: "allowed", colleges: [], rewardNote: "校园服务信息，不涉及活动奖励。", importance: "secondary",
+    registrationMethod: "无需报名，真实服务入口待接入学校官方资料。", verification: "示例公众号内容", demo: true,
+  },
+  {
+    id: "senior-scholarship", title: "高年级奖学金申请材料提交提醒", category: "学校通知",
+    summary: "面向大二及以上学生的申请事项，用于演示年级筛选，默认不会进入新生首页。",
+    source: "学校通知公告", sourceType: "school", sourcePortal: "https://www.sju.edu.cn/",
+    publishedAt: "2026-10-08T08:00:00+08:00", registrationDeadline: "2026-10-10T16:00:00+08:00",
+    freshmanAllowed: "excluded", colleges: [], rewardNote: "未明确。", importance: "high",
+    registrationMethod: "本条仅演示资格限制。", verification: "示例学校通知", demo: true,
+  },
+];

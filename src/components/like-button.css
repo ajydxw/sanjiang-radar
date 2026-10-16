@@ -1,0 +1,72 @@
+.like-button.like-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 7px;
+  min-width: 58px;
+  min-height: 44px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #778397;
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 180ms ease, background-color 180ms ease;
+}
+
+.like-button.like-liked { color: #e54864; }
+.like-button:not(:disabled):hover { background: #f1f4f9; }
+.like-button.like-liked:not(:disabled):hover { background: #fff0f3; }
+.like-button:focus-visible { outline: 3px solid #8aaef4; outline-offset: 2px; }
+.like-button:disabled { cursor: default; }
+.like-button:disabled:not(.like-liked) { color: #8a95a6; }
+.like-button .like-count { display: block; height: 20px; overflow: hidden; font-variant-numeric: tabular-nums; text-align: center; }
+.like-button .like-count-value { display: block; height: 20px; white-space: nowrap; }
+.like-button .like-count-track { display: block; animation: like-roll 600ms cubic-bezier(.22, .78, .22, 1) both; }
+.like-button .like-heart-wrap { position: relative; display: block; width: 20px; height: 20px; flex-shrink: 0; }
+.like-button .like-heart { display: block; fill: transparent; transition: fill 180ms ease; }
+.like-button.like-liked .like-heart { fill: currentColor; }
+.like-button .like-burst .like-heart { animation: like-pop 600ms cubic-bezier(.34, 1.56, .64, 1) both; }
+.like-button .like-particle {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--like-color);
+  opacity: 0;
+  pointer-events: none;
+  animation: like-scatter 600ms cubic-bezier(.16, .75, .3, 1) both;
+}
+
+/* 0 / 252 / 432 / 600ms: compress, overshoot, settle, rest. */
+@keyframes like-pop {
+  0% { transform: scale(.8); }
+  42% { transform: scale(1.2); }
+  72% { transform: scale(.96); }
+  100% { transform: scale(1); }
+}
+@keyframes like-scatter {
+  0% { transform: translate(0, 0) scale(.5); opacity: 0; }
+  15% { opacity: 1; }
+  75% { opacity: .65; }
+  100% { transform: translate(var(--like-x), var(--like-y)) scale(.25); opacity: 0; }
+}
+@keyframes like-roll {
+  from { transform: translateY(0); }
+  to { transform: translateY(-20px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .like-button.like-button, .like-button .like-heart { transition: none; }
+  .like-button .like-burst .like-heart { animation: none; }
+  .like-button .like-particle { display: none; animation: none; }
+  .like-button .like-count-track { animation: none; transform: translateY(-20px); }
+}

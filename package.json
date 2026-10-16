@@ -1,0 +1,55 @@
+{
+  "name": "sanjiang-radar",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "node scripts/check-public-feed.mjs && next build",
+    "typecheck": "tsc --noEmit",
+    "test:navigation": "node --test scripts/mobile-nav.test.mjs",
+    "test:visits": "node --test src/lib/visit-history.test.mjs scripts/visit-history.test.mjs",
+    "test:reminders": "node --test src/lib/activity-reminders.test.mjs scripts/activity-reminders.test.mjs",
+    "test:likes": "node --test src/lib/activity-likes.test.mjs scripts/activity-likes.test.mjs scripts/shared-likes.test.mjs",
+    "test:assistant": "node --test sources/question-policy.test.mjs scripts/assistant-context.test.mjs src/lib/life-assistant.test.mjs scripts/assistant-questions.test.mjs scripts/assistant-queue.test.mjs scripts/life-assistant.test.mjs",
+    "test:admin": "node --test src/lib/admin-console.test.mjs scripts/admin-auth.test.mjs scripts/admin-console.test.mjs",
+    "collect:school": "node scripts/collect-school.mjs",
+    "collect:pu": "node scripts/collect-pu.mjs",
+    "collect:wechat": "node scripts/collect-wechat.mjs",
+    "collect:competitions": "node scripts/collect-competitions.mjs",
+    "collect:exams": "node scripts/collect-exams.mjs",
+    "sync:watch": "node scripts/sync-sources.mjs --watch",
+    "check:public": "node scripts/check-public-feed.mjs",
+    "test:security": "node --test scripts/serve-radar.test.mjs scripts/local-secrets.test.mjs sources/public-feed.test.mjs",
+    "audit:security": "npm audit --ignore-scripts",
+    "test:collector": "node --test sources/sanjiang-web/parse.test.mjs sources/pu/normalize.test.mjs sources/wechat/parse.test.mjs sources/competitions/parse.test.mjs sources/exams/parse.test.mjs",
+    "postinstall": "node scripts/init-feeds.mjs",
+    "setup:feeds": "node scripts/init-feeds.mjs",
+    "serve": "node scripts/serve-radar.mjs",
+    "setup:admin": "node scripts/setup-admin.mjs",
+    "test:reading": "node --test scripts/public-reading.test.mjs"
+  },
+  "dependencies": {
+    "helmet": "8.3.0",
+    "lucide-react": "1.52.0",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "cheerio": "1.2.0",
+    "playwright-core": "1.64.0",
+    "typescript": "7.0.2"
+  },
+  "description": "三江学院新生校园信息聚合工具：通知、PU活动、竞赛考试、共享点赞与日历提醒。",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ajydxw/sanjiang-radar.git"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}
