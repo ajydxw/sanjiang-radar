@@ -13,6 +13,11 @@ artifacts/
 ai-development/
 AGENTS.md
 public/data/*.json
+!public/data/sanjiang-web.json
+!public/data/pu.json
+!public/data/wechat.json
+!public/data/competitions.json
+!public/data/exams.json
 *.log
 __pycache__/
 .venv/

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-29T10:06:34.984Z",
+  "items": [
+    {
+      "id": "wechat-a88c5e10690ab5eb",
+      "title": "收藏！三江学院图书馆全攻略",
+      "category": "校园资讯",
+      "summary": "图书馆概况历史规模三江学院图书馆始建于1993年，历经多次搬迁、调整，办馆条件和办馆水平不断提高，图书馆事业开始步入快速发展的轨道，实现了由传统图书馆向现代图书馆的历史性跨越。三江学院图书馆以“总馆+专业分馆+各校区分馆”的模式，秉承“以人为本、读者第一、服务至精”的服务理念，通过“优化馆藏、合理布局、通借通还、资源共",
+      "source": "三江学院官方公众号",
+      "sourceType": "wechat",
+      "sourcePortal": "https://mp.weixin.qq.com/s/sBoNCxZrHiMCy30i9emGcg",
+      "publishedAt": "2026-10-09T11:00:00+08:00",
+      "firstSeenAt": "2026-10-09T04:37:15.008Z",
+      "fetchedAt": "2026-10-23T04:45:24.184Z",
+      "freshmanAllowed": "unknown",
+      "eligibilityEvidence": null,
+      "colleges": [],
+      "rewardNote": "奖励或认定未核验，请查看公众号原文。",
+      "importance": "secondary",
+      "registrationMethod": "按公众号原文说明办理，报名仍前往官方渠道。",
+      "verification": "公众号原文",
+      "demo": false,
+      "manuallyVerified": false
+    }
+  ],
+  "sources": [
+    {
+      "id": "sju-wechat",
+      "name": "三江学院官方公众号",
+      "sourceType": "wechat",
+      "url": "https://mp.weixin.qq.com/s/sBoNCxZrHiMCy30i9emGcg",
+      "state": "failed",
+      "count": 1,
+      "lastSuccessAt": "2026-10-23T04:45:24.184Z",
+      "note": "文章链接导入已接通；仅保留有用的信息摘要与原文链接。自动发现新推文尚未配置。",
+      "error": "1 篇文章暂不可读取，保留已有信息",
+      "discoveryMode": "article-links"
+    }
+  ]
+}

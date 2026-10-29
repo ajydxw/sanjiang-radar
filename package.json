@@ -26,12 +26,13 @@
     "setup:feeds": "node scripts/init-feeds.mjs",
     "serve": "node scripts/serve-radar.mjs",
     "setup:admin": "node scripts/setup-admin.mjs",
-    "test:reading": "node --test scripts/public-reading.test.mjs"
+    "test:reading": "node --test scripts/public-reading.test.mjs",
+    "test:pages": "node --test scripts/pages.test.mjs"
   },
   "dependencies": {
     "helmet": "8.3.0",
     "lucide-react": "1.52.0",
-    "next": "16.4.0",
+    "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -43,7 +44,7 @@
     "playwright-core": "1.64.0",
     "typescript": "7.0.2"
   },
-  "description": "三江学院新生校园信息聚合工具：通知、PU活动、竞赛考试、共享点赞与日历提醒。",
+  "description": "三江学院班级信息工具：通知、PU活动、竞赛考试、个人收藏与日历提醒。",
   "license": "MIT",
   "repository": {
     "type": "git",
