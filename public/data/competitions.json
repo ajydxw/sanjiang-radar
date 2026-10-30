@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T10:08:07.144Z",
+  "generatedAt": "2026-10-30T01:38:17.477Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -62,7 +62,7 @@
         "赛将于10月21~22日在四川成都举办，报名时间为2026年9月9日-10月11日。 中国计算机学会大学生"
       ],
       "attachments": [],
-      "fetchedAt": "2026-10-29T10:07:10.007Z",
+      "fetchedAt": "2026-10-30T01:37:40.870Z",
       "firstSeenAt": "2026-10-10T04:49:21.882Z"
     },
     {
@@ -91,7 +91,7 @@
         "职业院校组或自行选择任意组别 报名时间 报名时间：2026年10月8日10:00—2026年12月18日14:00 报名须知 人数及方式"
       ],
       "attachments": [],
-      "fetchedAt": "2026-10-29T10:07:19.715Z",
+      "fetchedAt": "2026-10-30T01:37:49.857Z",
       "firstSeenAt": "2026-10-10T04:49:25.064Z"
     },
     {
@@ -188,7 +188,7 @@
       "count": 1,
       "lastSuccessAt": "2026-10-13T14:32:41.931Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
-      "error": "栏目暂不可读，仅检查已知通知：赛事官网返回 HTTP 404；赛事官网返回 HTTP 404"
+      "error": "栏目暂不可读，仅检查已知通知：赛事官网返回 HTTP 503；赛事官网返回 HTTP 404"
     },
     {
       "id": "competition-ccsp",
@@ -197,7 +197,7 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-10-29T10:07:17.226Z",
+      "lastSuccessAt": "2026-10-30T01:38:17.271Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
       "error": null
     },
@@ -208,7 +208,7 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-10-29T10:07:19.723Z",
+      "lastSuccessAt": "2026-10-30T01:38:17.279Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
       "error": null
     },
@@ -217,11 +217,11 @@
       "name": "蓝桥杯 · 视觉艺术设计赛",
       "url": "https://design.lanqiao.cn/",
       "sourceType": "competition",
-      "state": "ok",
+      "state": "failed",
       "count": 1,
       "lastSuccessAt": "2026-10-29T10:07:34.879Z",
-      "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
-      "error": null
+      "note": "本次未完成动态页面读取；原有信息、原文链接和上次成功时间保持不变。",
+      "error": "当前更新环境无法启动页面渲染，保留上次已核验信息。"
     },
     {
       "id": "competition-english",
@@ -231,19 +231,19 @@
       "state": "failed",
       "count": 1,
       "lastSuccessAt": "2026-10-23T09:55:37.279Z",
-      "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
-      "error": "page.waitForFunction: Timeout 15000ms exceeded."
+      "note": "本次未完成动态页面读取；原有信息、原文链接和上次成功时间保持不变。",
+      "error": "当前更新环境无法启动页面渲染，保留上次已核验信息。"
     },
     {
       "id": "competition-sanchuang",
       "name": "全国大学生电子商务三创赛",
       "url": "https://www.3chuang.net/",
       "sourceType": "competition",
-      "state": "ok",
+      "state": "failed",
       "count": 1,
       "lastSuccessAt": "2026-10-29T10:08:07.143Z",
-      "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
-      "error": null
+      "note": "本次未完成动态页面读取；原有信息、原文链接和上次成功时间保持不变。",
+      "error": "当前更新环境无法启动页面渲染，保留上次已核验信息。"
     }
   ]
 }
