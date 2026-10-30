@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "node scripts/check-public-feed.mjs && next build",
     "typecheck": "tsc --noEmit",
+    "test:profile": "node --test src/lib/college-majors.test.mjs",
     "test:navigation": "node --test scripts/mobile-nav.test.mjs",
     "test:visits": "node --test src/lib/visit-history.test.mjs scripts/visit-history.test.mjs",
     "test:reminders": "node --test src/lib/activity-reminders.test.mjs scripts/activity-reminders.test.mjs",
@@ -54,3 +55,4 @@
     "node": ">=22.18.0"
   }
 }
+

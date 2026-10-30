@@ -416,3 +416,6 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   .liked-view-controls>button:not(.text-button) { padding:11px 14px; }
   .results-header .liked-sort-note { max-width:120px; text-align:right; }
 }
+
+
+.major-help{max-width:430px;font-size:11px;line-height:1.8;color:var(--muted);margin:10px 0 0}.major-help a{color:var(--blue);text-decoration:underline;text-underline-offset:3px}.custom-major-field{margin-top:14px}
