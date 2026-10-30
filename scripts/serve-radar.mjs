@@ -9,6 +9,7 @@ import { createAssistantStore, handleAssistantRequest } from "./assistant-questi
 import { createAdminAuth, handleAdminRequest } from "./admin-auth.mjs";
 import { createLikeStore, handleLikesRequest } from "./activity-likes.mjs";
 import { publicReadingPage } from "./public-reading.mjs";
+import { createIdentityAuth, handleIdentityRequest } from "./identity-auth.mjs";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -55,11 +56,13 @@ export async function createRadarServer({
   assistantStore,
   adminAuth,
   likesStore,
+  identityAuth,
 } = {}) {
   root = await realpath(root);
   assistantStore ??= await createAssistantStore();
   adminAuth ??= await createAdminAuth();
   likesStore ??= await createLikeStore();
+  identityAuth ??= await createIdentityAuth();
   const budget = {
     requestsPerMinute: 1200,
     burst: 300,
@@ -133,6 +136,7 @@ export async function createRadarServer({
         reject(403, "blocked_path");
         return;
       }
+      if (await handleIdentityRequest(req, res, identityAuth)) return;
       if (await handleAdminRequest(req, res, { auth: adminAuth, store: assistantStore })) return;
       if (await handleAssistantRequest(req, res, assistantStore)) return;
       if (await handleLikesRequest(req, res, likesStore)) return;

@@ -421,6 +421,7 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 .major-help{max-width:430px;font-size:11px;line-height:1.8;color:var(--muted);margin:10px 0 0}.major-help a{color:var(--blue);text-decoration:underline;text-underline-offset:3px}.custom-major-field{margin-top:14px}
 
 /* Original lightweight radar welcome: a single sweep, then a quiet entry. */
+.identity-form label{display:block;text-align:left;font-size:13px;margin:12px 0;color:#526986}.identity-form input{display:block;box-sizing:border-box;width:100%;margin-top:6px;padding:12px;border:1px solid #bdcadd;border-radius:8px;background:#fff;font-size:16px;color:#233348}.identity-form input:focus-visible{outline:2px solid #86a4d2;outline-offset:2px}.identity-browse{margin-top:14px}.welcome-screen button:disabled{opacity:.6;cursor:wait}
 .welcome-screen{position:fixed;inset:0;width:100%;max-width:none;height:100dvh;max-height:none;margin:0;padding:0;border:0;background:#f7f9fc;color:#233348;overflow:auto;overscroll-behavior:contain}
 .welcome-screen::backdrop{background:#f7f9fc}
 .welcome-frame{min-height:100%;display:flex;flex-direction:column;padding:30px clamp(22px,5vw,72px);background:radial-gradient(ellipse at 50% 28%,#e9effb80 0,transparent 58%)}

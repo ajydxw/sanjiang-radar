@@ -18,6 +18,7 @@ jobs:
     env:
       NEXT_PUBLIC_BASE_PATH: /sanjiang-radar
       NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_IDENTITY_ENABLED: '0'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -26,6 +27,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node --test src/lib/welcome.test.mjs src/lib/college-majors.test.mjs src/lib/information.test.mjs src/lib/activity-reminders.test.mjs src/lib/visit-history.test.mjs sources/public-feed.test.mjs
+      - run: npm run test:identity
       - run: npm run build
       - uses: actions/upload-pages-artifact@v4
         with:

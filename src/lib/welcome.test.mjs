@@ -25,6 +25,9 @@ test('identity placeholder cannot collect inputs or claim authentication; animat
  const component = fs.readFileSync('src/components/welcome-screen.tsx', 'utf8');
  assert.doesNotMatch(component, /<input|<form|fetch\(|localStorage/);
  assert.match(component, /暂未开放/);
+ const identity = fs.readFileSync('src/components/identity-confirmation.tsx', 'utf8');
+ assert.match(identity, /NEXT_PUBLIC_IDENTITY_ENABLED === '1'/);
+ assert.doesNotMatch(identity, /localStorage|sessionStorage/);
  assert.match(component, /onCancel/);
  const css = fs.readFileSync('src/app/globals.css','utf8');
  assert.match(css, /prefers-reduced-motion:reduce\)\{\.welcome-screen/);

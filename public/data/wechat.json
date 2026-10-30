@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-29T10:06:34.984Z",
+  "generatedAt": "2026-10-30T04:52:01.057Z",
   "items": [
     {
       "id": "wechat-a88c5e10690ab5eb",
@@ -12,7 +12,7 @@
       "sourcePortal": "https://mp.weixin.qq.com/s/sBoNCxZrHiMCy30i9emGcg",
       "publishedAt": "2026-10-09T11:00:00+08:00",
       "firstSeenAt": "2026-10-09T04:37:15.008Z",
-      "fetchedAt": "2026-10-23T04:45:24.184Z",
+      "fetchedAt": "2026-10-30T04:52:26.130Z",
       "freshmanAllowed": "unknown",
       "eligibilityEvidence": null,
       "colleges": [],
@@ -30,11 +30,11 @@
       "name": "三江学院官方公众号",
       "sourceType": "wechat",
       "url": "https://mp.weixin.qq.com/s/sBoNCxZrHiMCy30i9emGcg",
-      "state": "failed",
+      "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-10-23T04:45:24.184Z",
+      "lastSuccessAt": "2026-10-30T04:52:26.130Z",
       "note": "文章链接导入已接通；仅保留有用的信息摘要与原文链接。自动发现新推文尚未配置。",
-      "error": "1 篇文章暂不可读取，保留已有信息",
+      "error": null,
       "discoveryMode": "article-links"
     }
   ]

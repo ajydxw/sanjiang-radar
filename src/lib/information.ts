@@ -45,7 +45,7 @@ export type SchoolFeed = {
   schemaVersion: 1;
   generatedAt: string;
   items: Information[];
-  sources: { id: string; name: string; url: string; state: "ok" | "partial" | "failed" | "pending"; count: number; lastSuccessAt: string | null; note?: string; error?: string | null; sourceType?: Information["sourceType"] }[];
+  sources: { id: string; name: string; url: string; state: "ok" | "partial" | "failed" | "pending"; count: number; lastSuccessAt: string | null; lastAttemptAt?: string | null; note?: string; error?: string | null; sourceType?: Information["sourceType"] }[];
 };
 
 export const DEMO_NOW = new Date("2026-10-08T10:00:00+08:00");

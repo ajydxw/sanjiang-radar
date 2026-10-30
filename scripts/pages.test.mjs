@@ -37,8 +37,10 @@ async function setup(t) {
     assert.deepEqual(errors, []); assert.deepEqual(api, []); assert.deepEqual(badResponses, []);
   });
   const origin = `http://127.0.0.1:${server.address().port}${prefix}/`;
-  async function visitor({ fixture = false, blockedStorage = false, hash = 'radar' } = {}) {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce', acceptDownloads: true });
+  async function visitor({ fixture = false, blockedStorage = false, hash = 'radar', welcome = false, profile, time = '2026-10-29T12:00:00+08:00', reducedMotion = 'reduce' } = {}) {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion, timezoneId: 'America/Los_Angeles', acceptDownloads: true,
+      ...(profile ? { storageState: { cookies: [], origins: [{ origin: new URL(origin).origin, localStorage: [{ name: 'sanjiang-radar-demo-v1', value: JSON.stringify(profile) }] }] } } : {}),
+    });
     if (fixture) await context.route('**/data/*.json', route => route.fulfill({ json: {
       schemaVersion: 1, generatedAt: '2026-10-29T08:00:00+08:00',
       items: route.request().url().endsWith('pu.json') ? fixtureItems : [], sources: [],
@@ -50,12 +52,12 @@ async function setup(t) {
     page.on('pageerror', error => errors.push(error.message));
     page.on('request', req => { if (new URL(req.url()).pathname.includes('/api/')) api.push(req.url()); });
     page.on('response', res => { if (res.status() >= 400) badResponses.push(`${res.status()} ${res.url()}`); });
-    await page.clock.install({ time: new Date('2026-10-29T12:00:00+08:00') });
+    await page.clock.install({ time: new Date(time) });
     await page.goto(`${origin}#${hash}`, { waitUntil: 'networkidle' });
-    if (await page.getByRole('button', { name: '直接浏览', exact: true }).isVisible()) {
+    if (!welcome && await page.getByRole('button', { name: '直接浏览', exact: true }).isVisible()) {
       await page.getByRole('button', { name: '直接浏览', exact: true }).click();
     }
-    await page.waitForFunction(() => !document.querySelector('.feed-warning') && document.querySelector('.hero') || document.querySelector('.discovery-controls'));
+    await page.waitForFunction(() => !document.querySelector('.feed-warning') && document.querySelector('.hero') || document.querySelector('.discovery-controls') || document.querySelector('.settings-panel') || document.querySelector('.results-header'));
     return page;
   }
   return { visitor };
@@ -116,3 +118,105 @@ test('禁用浏览器存储时仍能浏览并提示收藏仅本次有效', async
   assert.equal(await page.locator('.results-grid .event-card').count(), 1);
 });
 
+
+
+test('手机专业随学院切换，旧手填资料和收藏在刷新后保留', async t => {
+  const { visitor } = await setup(t);
+  const page = await visitor({ hash: 'profile', profile: { favorites: ['old-item'], profile: { college: '建筑学院', major: '旧手填专业', interests: ['竞赛'] } } });
+  const college = page.getByLabel('学院', { exact: true });
+  const major = page.getByLabel('专业', { exact: true });
+  assert.equal(await page.getByLabel('填写专业名称').inputValue(), '旧手填专业');
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await page.getByLabel('填写专业名称').inputValue(), '旧手填专业');
+  await major.selectOption({ label: '风景园林' });
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('sanjiang-radar-demo-v1')).profile.major === '风景园林');
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await major.inputValue(), '风景园林');
+  await college.selectOption({ label: '计算机科学与工程学院' });
+  assert.equal(await major.inputValue(), '');
+  assert.equal(await major.locator('option', { hasText: '风景园林' }).count(), 0);
+  assert.equal(await major.locator('option', { hasText: '软件工程' }).count(), 1);
+  await major.selectOption({ label: '软件工程' });
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('sanjiang-radar-demo-v1')).profile.major === '软件工程');
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await college.inputValue(), '计算机科学与工程学院');
+  assert.equal(await major.inputValue(), '软件工程');
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('sanjiang-radar-demo-v1'))), {
+    favorites: ['old-item'], profile: { college: '计算机科学与工程学院', major: '软件工程', interests: ['竞赛'] },
+  });
+});
+
+test('旧未知学院和手填专业保留，主动切换学院后清空专业', async t => {
+  const { visitor } = await setup(t);
+  const page = await visitor({ hash: 'profile', profile: { favorites: [], profile: { college: '旧学院名称', major: '旧手填专业', interests: [] } } });
+  const college = page.getByLabel('学院', { exact: true });
+  const major = page.getByLabel('专业', { exact: true });
+  assert.equal(await college.inputValue(), '旧学院名称');
+  assert.equal(await page.getByLabel('填写专业名称').inputValue(), '旧手填专业');
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await college.inputValue(), '旧学院名称');
+  assert.equal(await page.getByLabel('填写专业名称').inputValue(), '旧手填专业');
+  await college.selectOption({ label: '建筑学院' });
+  assert.equal(await major.inputValue(), '');
+  assert.equal(await page.getByLabel('填写专业名称').count(), 0);
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('sanjiang-radar-demo-v1')).profile.college === '建筑学院');
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await college.inputValue(), '建筑学院');
+  assert.equal(await major.inputValue(), '');
+});
+
+test('手机开屏展示标题与入口，身份未开放，返回和直接浏览可用', async t => {
+  const { visitor } = await setup(t);
+  const page = await visitor({ welcome: true, reducedMotion: 'no-preference' });
+  const dialog = page.getByRole('dialog');
+  await dialog.waitFor({ state: 'visible' });
+  await page.locator('.welcome-entry').evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
+  assert.equal(await dialog.getByRole('heading', { name: '三江雷达.' }).count(), 1);
+  assert.ok(await dialog.getByRole('button', { name: '直接浏览', exact: true }).isVisible());
+  await dialog.getByRole('button', { name: /姓名＋学号确认/ }).click();
+  assert.ok(await dialog.getByText(/姓名＋学号确认暂未开放/).isVisible());
+  await mkdir('.sites-runtime', { recursive: true });
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.screenshot({ path: `.sites-runtime/welcome-identity-${width}.png` });
+  }
+  assert.equal(await dialog.locator('input, form').count(), 0);
+  await dialog.getByRole('button', { name: '返回入口' }).click();
+  await dialog.getByRole('button', { name: '直接浏览', exact: true }).click();
+  assert.equal(await dialog.count(), 0);
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await dialog.count(), 0);
+  await nav(page, '发现');
+  await page.goBack({ waitUntil: 'networkidle' });
+  assert.equal(await dialog.count(), 0);
+});
+
+test('跳过开屏、减少动态与深链直达', async t => {
+  const { visitor } = await setup(t);
+  const page = await visitor({ welcome: true });
+  const dialog = page.getByRole('dialog');
+  await dialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('.welcome-sweep').evaluate(el => getComputedStyle(el).animationName), 'none');
+  assert.ok(await dialog.getByRole('button', { name: '直接浏览', exact: true }).isVisible());
+  await dialog.getByRole('button', { name: '跳过开屏' }).click();
+  assert.equal(await dialog.count(), 0);
+  for (const hash of ['profile', 'discover', 'saved']) {
+    const deep = await visitor({ hash, welcome: true });
+    assert.equal(await deep.getByRole('dialog').count(), 0, hash);
+    assert.equal(new URL(deep.url()).hash, '#' + hash);
+  }
+});
+
+test('开屏问候使用北京时间并按四周轮换', async t => {
+  const { visitor } = await setup(t);
+  const greetings = [];
+  for (const date of ['2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16', '2026-11-23']) {
+    const page = await visitor({ welcome: true, time: date + 'T00:00:00Z' });
+    greetings.push(await page.locator('.welcome-greeting').innerText());
+  }
+  assert.equal(new Set(greetings.slice(0, 4)).size, 4);
+  assert.equal(greetings[0], greetings[4]);
+  assert.ok(greetings.every(text => text.startsWith('周一')));
+  const evening = await visitor({ welcome: true, time: '2026-10-30T10:00:00Z' });
+  assert.equal(await evening.locator('.welcome-greeting').innerText(), '月光下的对话');
+});
