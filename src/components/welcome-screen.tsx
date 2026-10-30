@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, ChevronLeft, Radar, UserRound } from 'lucide-react';
-import { personalizedGreeting, welcomeGreeting } from '@/lib/welcome';
+import { identityEntryUrl, personalizedGreeting, welcomeGreeting } from '@/lib/welcome';
 import IdentityConfirmation, { type useIdentity } from './identity-confirmation';
+
+const privateEntry = process.env.NEXT_PUBLIC_IDENTITY_ENABLED === '1' ? null : identityEntryUrl(process.env.NEXT_PUBLIC_IDENTITY_URL);
+const entryIsTest = process.env.NEXT_PUBLIC_IDENTITY_ENTRY_MODE !== 'real';
 
 // Confirmed names come only from the private server session, never local input.
 export default function WelcomeScreen({ onContinue, identitySession }: { onContinue: () => void; identitySession: ReturnType<typeof useIdentity> }) {
@@ -32,7 +35,7 @@ export default function WelcomeScreen({ onContinue, identitySession }: { onConti
           {identity ? <section className="welcome-identity" aria-labelledby="identity-title">
             <IdentityConfirmation identity={identitySession} onContinue={onContinue} />
             <button className="welcome-back" type="button" onClick={() => setIdentity(false)}><ChevronLeft size={14} /> 返回入口</button>
-          </section> : <><button className="welcome-primary" type="button" onClick={onContinue}>直接浏览 <ArrowRight size={18} /></button><button className="welcome-secondary" type="button" onClick={() => setIdentity(true)}><UserRound size={16} /> 姓名＋学号确认 <small>{identitySession.confirmed ? '已确认' : identitySession.enabled ? '可选' : '暂未开放'}</small></button></>}
+          </section> : <><button className="welcome-primary" type="button" onClick={onContinue}>直接浏览 <ArrowRight size={18} /></button>{privateEntry ? <><a className="welcome-secondary" href={privateEntry} referrerPolicy="no-referrer"><UserRound size={16} />{entryIsTest ? '进入身份测试' : '姓名＋学号确认'}<small>{entryIsTest ? '合成账号' : '可选'}</small></a><small>{entryIsTest ? '仅用于测试，不收集真实姓名或学号。' : '将在身份服务中继续浏览并保留称呼。原网站的收藏和设置会保留，但不会自动同步到这里。'}站长电脑离线时入口不可用。</small></> : <button className="welcome-secondary" type="button" onClick={() => setIdentity(true)}><UserRound size={16} /> 姓名＋学号确认 <small>{identitySession.testMode ? '测试账号' : identitySession.confirmed ? '已确认' : identitySession.enabled ? '可选' : '暂未开放'}</small></button>}</>}
         </div>
       </div>
       <div className="welcome-bottom"><span>校园通知 · 活动 · 竞赛</span><span>独立学生项目</span></div>

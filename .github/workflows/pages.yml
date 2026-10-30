@@ -19,6 +19,8 @@ jobs:
       NEXT_PUBLIC_BASE_PATH: /sanjiang-radar
       NEXT_TELEMETRY_DISABLED: '1'
       NEXT_PUBLIC_IDENTITY_ENABLED: '0'
+      NEXT_PUBLIC_IDENTITY_URL: 'https://sanjiang-radar.tail43ed3c.ts.net/'
+      NEXT_PUBLIC_IDENTITY_ENTRY_MODE: 'real'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

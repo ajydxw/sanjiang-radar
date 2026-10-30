@@ -7,6 +7,8 @@ import { basename, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 import { createRadarServer } from "./serve-radar.mjs";
+import { createIdentityAuth } from "./identity-auth.mjs";
+import { createIdentityServer } from "./serve-identity.mjs";
 
 const inlineScript = 'self.__next_f.push([1,"fixture"]);';
 const html = `<html><head><style>body{color:black}</style></head><body><script>${inlineScript}</script><script src="/_next/static/test.js"></script></body></html>`;
@@ -76,6 +78,33 @@ test("public files get Helmet protections, exact inline-script hashes, HEAD and 
   assert.equal(cached.body, "");
   assert.equal((await request(server, "/data.json")).status, 200);
   assert.equal((await request(server, "/_next/static/test.js")).headers["cache-control"], "public, max-age=31536000, immutable");
+});
+
+test("identity-only hosting exposes public files and exactly three identity APIs, without other services", async t => {
+  const privateModules = new Proxy({}, { get() { throw new Error('Private modules must never be used'); } });
+  const identityAuth = await createIdentityAuth({ roster: [{ name: '测试同学', studentId: '000000001' }], testMode: true });
+  const { server } = await fixture(t, { identityOnly: true, identityAuth, assistantStore: privateModules, adminAuth: privateModules, likesStore: privateModules });
+  assert.equal((await request(server)).status, 200);
+  const session = await request(server, '/api/identity/session');
+  assert.deepEqual(JSON.parse(session.body), { enabled: true, confirmed: false, name: null, testMode: true });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const confirmed = await request(server, '/api/identity/confirm', {
+    method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: '测试同学', studentId: '000000001' }),
+  });
+  assert.equal(confirmed.status, 200);
+  assert.equal(JSON.parse(confirmed.body).testMode, true);
+  assert.match(confirmed.headers['set-cookie'][0], /HttpOnly; SameSite=Strict/);
+  for (const path of ['/api', '/api/admin/session', '/api/admin/questions', '/api/assistant/questions', '/api/likes', '/api/lottery', '/api/identity/roster', '/api/identity/list', '/api/identity/unknown', '/api/%69dentity/session']) {
+    for (const method of ['GET', 'POST']) assert.equal((await request(server, path, { method })).status, 404, `${method} ${path}`);
+  }
+  for (const path of ['/.sites-runtime/identity/roster.dpapi', '/.env', '/%2e%2e/private/private.txt']) {
+    assert.equal((await request(server, path)).status, 403);
+  }
+  const denied = await request(server, '/api/identity/confirm', { method: 'POST', headers: { Origin: 'https://foreign.example', 'Content-Type': 'application/json' }, body: '{}' });
+  assert.equal(denied.status, 403);
+  await assert.rejects(createIdentityServer(), /明确选择/);
+  await assert.rejects(createIdentityServer({ testMode: true, rosterPath: 'not-read.dpapi' }), /明确选择/);
 });
 
 test("methods, bodies, private paths, malformed paths and Windows path tricks are rejected", async (t) => {

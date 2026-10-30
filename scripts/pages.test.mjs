@@ -4,9 +4,11 @@ import http from 'node:http';
 import { readFile, stat, mkdir } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { chromium } from 'playwright-core';
+import { identityEntryUrl, welcomeGreeting } from '../src/lib/welcome.ts';
 
-const root = resolve('out');
+const root = resolve(process.env.RADAR_PAGES_TEST_ROOT || 'out');
 const prefix = '/sanjiang-radar';
+const identityEntry = identityEntryUrl(process.env.NEXT_PUBLIC_IDENTITY_URL);
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
 const fixtureItems = [0, 1].map(index => ({
   id: `static-test-${index}`, title: `静态收藏测试 ${index}`, summary: '用于检验独立收藏和日期，不发布到网站。',
@@ -18,7 +20,7 @@ const fixtureItems = [0, 1].map(index => ({
 }));
 
 async function setup(t) {
-  const errors = [], api = [], badResponses = [];
+  const errors = [], api = [], crossSiteApi = [], badResponses = [];
   const server = http.createServer(async (req, res) => {
     try {
       const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
@@ -34,7 +36,7 @@ async function setup(t) {
   const browser = await chromium.launch({ channel: 'msedge', headless: true, args: ['--no-proxy-server'] });
   t.after(async () => {
     await browser.close(); server.closeAllConnections(); await new Promise(done => server.close(done));
-    assert.deepEqual(errors, []); assert.deepEqual(api, []); assert.deepEqual(badResponses, []);
+    assert.deepEqual(errors, []); assert.deepEqual(api, []); assert.deepEqual(crossSiteApi, []); assert.deepEqual(badResponses, []);
   });
   const origin = `http://127.0.0.1:${server.address().port}${prefix}/`;
   async function visitor({ fixture = false, blockedStorage = false, hash = 'radar', welcome = false, profile, time = '2026-10-29T12:00:00+08:00', reducedMotion = 'reduce' } = {}) {
@@ -50,7 +52,11 @@ async function setup(t) {
     });
     const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
-    page.on('request', req => { if (new URL(req.url()).pathname.includes('/api/')) api.push(req.url()); });
+    page.on('request', req => {
+      const target = new URL(req.url());
+      if (target.pathname.includes('/api/')) api.push(req.url());
+      if (['fetch', 'xhr'].includes(req.resourceType()) && target.origin !== new URL(origin).origin) crossSiteApi.push(req.url());
+    });
     page.on('response', res => { if (res.status() >= 400) badResponses.push(`${res.status()} ${res.url()}`); });
     await page.clock.install({ time: new Date(time) });
     await page.goto(`${origin}#${hash}`, { waitUntil: 'networkidle' });
@@ -165,7 +171,7 @@ test('旧未知学院和手填专业保留，主动切换学院后清空专业',
   assert.equal(await major.inputValue(), '');
 });
 
-test('手机开屏展示标题与入口，身份未开放，返回和直接浏览可用', async t => {
+test('手机开屏身份入口按配置显示占位按钮或HTTPS跳转链接，Pages不收集身份', async t => {
   const { visitor } = await setup(t);
   const page = await visitor({ welcome: true, reducedMotion: 'no-preference' });
   const dialog = page.getByRole('dialog');
@@ -173,15 +179,31 @@ test('手机开屏展示标题与入口，身份未开放，返回和直接浏�
   await page.locator('.welcome-entry').evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
   assert.equal(await dialog.getByRole('heading', { name: '三江雷达.' }).count(), 1);
   assert.ok(await dialog.getByRole('button', { name: '直接浏览', exact: true }).isVisible());
-  await dialog.getByRole('button', { name: /姓名＋学号确认/ }).click();
-  assert.ok(await dialog.getByText(/姓名＋学号确认暂未开放/).isVisible());
+  if (identityEntry) {
+    const entryIsReal = process.env.NEXT_PUBLIC_IDENTITY_ENTRY_MODE === 'real';
+    const entry = dialog.getByRole('link', { name: entryIsReal ? /姓名＋学号确认/ : /进入身份测试/ });
+    assert.equal(await entry.getAttribute('href'), identityEntry);
+    assert.equal(await entry.getAttribute('referrerpolicy'), 'no-referrer');
+    assert.ok([null, '_self'].includes(await entry.getAttribute('target')), 'entry must be a top-level same-tab link');
+    assert.equal(await dialog.getByRole('button', { name: /姓名＋学号确认/ }).count(), 0);
+    assert.ok(await dialog.getByText(entryIsReal ? /将在身份服务中继续浏览并保留称呼/ : /仅用于测试，不收集真实姓名或学号/).isVisible());
+  } else {
+    assert.equal(await dialog.getByRole('link', { name: /姓名＋学号确认|进入身份测试/ }).count(), 0);
+    await dialog.getByRole('button', { name: /姓名＋学号确认/ }).click();
+    assert.ok(await dialog.getByText(/姓名＋学号确认暂未开放/).isVisible());
+  }
+  assert.equal(await dialog.locator('.welcome-greeting').innerText(), welcomeGreeting(new Date('2026-10-29T12:00:00+08:00')).text);
   await mkdir('.sites-runtime', { recursive: true });
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await page.screenshot({ path: `.sites-runtime/welcome-identity-${width}.png` });
   }
   assert.equal(await dialog.locator('input, form').count(), 0);
-  await dialog.getByRole('button', { name: '返回入口' }).click();
+  assert.equal(await page.getByLabel('姓名', { exact: true }).count(), 0);
+  assert.equal(await page.getByLabel('完整学号', { exact: true }).count(), 0);
+  assert.equal((await page.context().cookies()).some(cookie => cookie.name === 'sanjiang_identity'), false);
+  assert.deepEqual(await page.evaluate(() => [...Object.keys(localStorage), ...Object.keys(sessionStorage)].filter(key => /identity|studentId/i.test(key))), []);
+  if (!identityEntry) await dialog.getByRole('button', { name: '返回入口' }).click();
   await dialog.getByRole('button', { name: '直接浏览', exact: true }).click();
   assert.equal(await dialog.count(), 0);
   await page.reload({ waitUntil: 'networkidle' });

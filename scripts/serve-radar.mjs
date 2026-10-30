@@ -57,11 +57,15 @@ export async function createRadarServer({
   adminAuth,
   likesStore,
   identityAuth,
+  identityOnly = false,
 } = {}) {
+  if (typeof identityOnly !== "boolean") throw new Error("Invalid identity-only mode");
   root = await realpath(root);
-  assistantStore ??= await createAssistantStore();
-  adminAuth ??= await createAdminAuth();
-  likesStore ??= await createLikeStore();
+  if (!identityOnly) {
+    assistantStore ??= await createAssistantStore();
+    adminAuth ??= await createAdminAuth();
+    likesStore ??= await createLikeStore();
+  }
   identityAuth ??= await createIdentityAuth();
   const budget = {
     requestsPerMinute: 1200,
@@ -136,10 +140,15 @@ export async function createRadarServer({
         reject(403, "blocked_path");
         return;
       }
+      if (identityOnly && (pathname === "/api" || pathname.startsWith("/api/"))
+        && (!["/api/identity/session", "/api/identity/confirm", "/api/identity/logout"].includes(pathname)
+          || req.url.split("?")[0] !== pathname)) { reject(404); return; }
       if (await handleIdentityRequest(req, res, identityAuth)) return;
-      if (await handleAdminRequest(req, res, { auth: adminAuth, store: assistantStore })) return;
-      if (await handleAssistantRequest(req, res, assistantStore)) return;
-      if (await handleLikesRequest(req, res, likesStore)) return;
+      if (!identityOnly) {
+        if (await handleAdminRequest(req, res, { auth: adminAuth, store: assistantStore })) return;
+        if (await handleAssistantRequest(req, res, assistantStore)) return;
+        if (await handleLikesRequest(req, res, likesStore)) return;
+      }
       if (req.method !== "GET" && req.method !== "HEAD") {
         res.setHeader("Allow", "GET, HEAD");
         reject(405, "blocked_method");
@@ -149,7 +158,7 @@ export async function createRadarServer({
         reject(413, "blocked_body");
         return;
       }
-      if (pathname === "/read" || pathname === "/read/") {
+      if (!identityOnly && (pathname === "/read" || pathname === "/read/")) {
         const { status, body } = await publicReadingPage(root);
         if (body.length > budget.htmlBytes) { reject(413, "oversize_file"); return; }
         res.writeHead(status, { "Content-Type": "text/html; charset=utf-8", "Content-Length": body.length });

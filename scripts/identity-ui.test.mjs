@@ -8,8 +8,8 @@ import { createIdentityAuth, handleIdentityRequest } from './identity-auth.mjs';
 
 // Requires a root-path build with NEXT_PUBLIC_IDENTITY_ENABLED=1; the default build must fail this test.
 test('开启身份后的真实同源验证、会话、游客和退出', async t => {
-  const root = resolve('out');
-  const auth = await createIdentityAuth({ roster: [{ name: '测试同学', studentId: '000000001' }] });
+  const root = resolve(process.env.RADAR_IDENTITY_UI_ROOT || 'out');
+  let auth = await createIdentityAuth({ roster: [{ name: '测试同学', studentId: '000000001' }] });
   const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
   const server = http.createServer(async (req, res) => {
     if (await handleIdentityRequest(req, res, auth)) return;
@@ -86,4 +86,23 @@ test('开启身份后的真实同源验证、会话、游客和退出', async t 
   await page.reload({ waitUntil: 'networkidle' });
   await reopen(page);
   assert.equal(await dialog.locator('.welcome-greeting').innerText(), originalGreeting);
+
+  auth = await createIdentityAuth({ roster: [{ name: '测试同学', studentId: '000000001' }], testMode: true });
+  const testPage = await newVisitor();
+  await testPage.getByRole('button', { name: /姓名＋学号确认.*测试账号/ }).click();
+  await testPage.getByText(/当前仅开放合成测试账号/).waitFor();
+  await testPage.getByLabel('姓名', { exact: true }).fill('测试同学');
+  await testPage.getByLabel('完整学号').fill('000000001');
+  await testPage.getByRole('button', { name: '确认班级身份' }).click();
+  await testPage.getByText('仅测试账号确认成功，不代表真实班级身份。').waitFor();
+  await testPage.getByRole('button', { name: '继续浏览', exact: true }).click();
+  await testPage.reload({ waitUntil: 'networkidle' });
+  await reopen(testPage);
+  await testPage.waitForFunction(() => document.querySelector('.welcome-greeting')?.textContent?.includes('测试同学'));
+  assert.equal(new URL(testPage.url()).origin, origin, 'confirmation continues browsing at the same identity origin');
+  await testPage.getByRole('button', { name: /姓名＋学号确认/ }).click();
+  await testPage.getByRole('button', { name: '退出身份确认' }).click();
+  await testPage.getByRole('heading', { name: '测试账号确认' }).waitFor();
+  await testPage.getByText(/当前仅开放合成测试账号/).waitFor();
+  await assertNoIdentityInStorage(testPage);
 });

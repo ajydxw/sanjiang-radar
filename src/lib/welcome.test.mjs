@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { welcomeGreeting, shouldShowWelcome, personalizedGreeting } from './welcome.ts';
+import { welcomeGreeting, shouldShowWelcome, personalizedGreeting, identityEntryUrl } from './welcome.ts';
 
 test('morning varies by weekday and four-week rotation in China time', () => {
  const a = welcomeGreeting(new Date('2026-10-26T00:00:00Z'));
@@ -39,5 +39,12 @@ test('verified identity appends name to the same greeting, guests keep original'
   assert.equal(personalizedGreeting(greeting), greeting);
   assert.equal(personalizedGreeting(greeting, ''), greeting);
   assert.equal(personalizedGreeting(greeting, ' 张三 '), `${greeting}，张三`);
+ }
+});
+
+test('private identity entry requires an explicit credential-free HTTPS root', () => {
+ assert.equal(identityEntryUrl('https://identity.example/'), 'https://identity.example/');
+ for (const value of [undefined, '', '/api/identity', 'http://identity.example/', 'javascript:alert(1)', 'https://user:pass@identity.example/', 'https://identity.example/?token=secret', 'https://identity.example/#name', 'https://identity.example/path']) {
+  assert.equal(identityEntryUrl(value), null, value);
  }
 });

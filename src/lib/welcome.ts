@@ -1,4 +1,14 @@
 export const WELCOME_STORAGE_KEY = 'sanjiang-radar-welcome-v1';
+
+/** Only an explicitly configured HTTPS root can open the separate private site. */
+export function identityEntryUrl(value?: string) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash && url.pathname === '/'
+      ? url.origin + '/' : null;
+  } catch { return null; }
+}
 const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 const mornings = ['早上好', '，晨光正好', '，与清晨相逢', '，新的一页'];
 
