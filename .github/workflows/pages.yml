@@ -25,7 +25,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: node --test src/lib/college-majors.test.mjs src/lib/information.test.mjs src/lib/activity-reminders.test.mjs src/lib/visit-history.test.mjs sources/public-feed.test.mjs
+      - run: node --test src/lib/welcome.test.mjs src/lib/college-majors.test.mjs src/lib/information.test.mjs src/lib/activity-reminders.test.mjs src/lib/visit-history.test.mjs sources/public-feed.test.mjs
       - run: npm run build
       - uses: actions/upload-pages-artifact@v4
         with:

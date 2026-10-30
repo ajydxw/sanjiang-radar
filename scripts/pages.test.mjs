@@ -52,6 +52,9 @@ async function setup(t) {
     page.on('response', res => { if (res.status() >= 400) badResponses.push(`${res.status()} ${res.url()}`); });
     await page.clock.install({ time: new Date('2026-10-29T12:00:00+08:00') });
     await page.goto(`${origin}#${hash}`, { waitUntil: 'networkidle' });
+    if (await page.getByRole('button', { name: '直接浏览', exact: true }).isVisible()) {
+      await page.getByRole('button', { name: '直接浏览', exact: true }).click();
+    }
     await page.waitForFunction(() => !document.querySelector('.feed-warning') && document.querySelector('.hero') || document.querySelector('.discovery-controls'));
     return page;
   }
@@ -112,3 +115,4 @@ test('禁用浏览器存储时仍能浏览并提示收藏仅本次有效', async
   await nav(page, '收藏');
   assert.equal(await page.locator('.results-grid .event-card').count(), 1);
 });
+

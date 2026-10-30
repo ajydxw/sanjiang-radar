@@ -28,7 +28,8 @@
     "serve": "node scripts/serve-radar.mjs",
     "setup:admin": "node scripts/setup-admin.mjs",
     "test:reading": "node --test scripts/public-reading.test.mjs",
-    "test:pages": "node --test scripts/pages.test.mjs"
+    "test:pages": "node --test scripts/pages.test.mjs",
+    "test:welcome": "node --test src/lib/welcome.test.mjs"
   },
   "dependencies": {
     "helmet": "8.3.0",
@@ -55,4 +56,3 @@
     "node": ">=22.18.0"
   }
 }
-

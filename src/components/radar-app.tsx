@@ -8,6 +8,8 @@ import { useVisitHistory } from './use-visit-history';
 import ActivityReminders, { ReminderSettings } from './activity-reminders';
 import LikeButton from './like-button';
 import MajorSelect from './major-select';
+import WelcomeScreen from './welcome-screen';
+import { WELCOME_STORAGE_KEY, shouldShowWelcome } from '@/lib/welcome';
 import { changeProfileCollege } from '@/lib/college-majors';
 import { REMINDER_STORAGE_KEY, readReminderPreferences, getReminderOptions, buildReminderEvents, createReminderCalendar, type ReminderPreferences, type ReminderOptions } from '@/lib/activity-reminders';
 
@@ -146,6 +148,16 @@ export default function RadarApp() {
   const [sort, setSort] = useState("latest");
   const [selected, setSelected] = useState<Information | null>(null);
   const [toast, setToast] = useState("");
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  useEffect(() => {
+    let seen = false;
+    try { seen = sessionStorage.getItem(WELCOME_STORAGE_KEY) === 'seen'; } catch { /* Entry still works with storage disabled. */ }
+    setWelcomeOpen(shouldShowWelcome(window.location.hash, seen));
+  }, []);
+  function continueFromWelcome() {
+    try { sessionStorage.setItem(WELCOME_STORAGE_KEY, 'seen'); } catch { /* No storage is required for visitor access. */ }
+    setWelcomeOpen(false);
+  }
 
   useEffect(() => {
     let active = true;
@@ -283,6 +295,7 @@ export default function RadarApp() {
   function sectionHeading(title: string, subtitle: string, action: () => void) { return <div className="section-heading"><div><h2>{title}</h2><p>{subtitle}</p></div><button className="text-button" onClick={action}>查看全部 <ArrowRight size={15} /></button></div>; }
 
   return <>
+    {welcomeOpen && <WelcomeScreen onContinue={continueFromWelcome} />}
     <header className="site-header"><div className="header-inner"><button className="brand" onClick={() => navigate("radar")} aria-label="三江雷达首页"><span className="brand-icon"><Radar size={25} strokeWidth={1.7} /></span><span>三江雷达<small>SANJIANG RADAR</small></span></button>
       <nav className="desktop-nav" aria-label="主导航">{TABS.map(({ key, label, icon: Icon }) => <button key={key} className={tab === key ? "nav-active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => navigate(key)}><Icon size={17} />{label}{key === "saved" && favorites.length > 0 && <span className="nav-count">{favorites.length}</span>}</button>)}</nav>
       <div className="header-actions"><span className="demo-pill"><span />校园信息试用版</span><button className="avatar-button" aria-label="设置我的学院" onClick={() => navigate("profile")}><UserRound size={20} /></button></div>
@@ -328,7 +341,7 @@ export default function RadarApp() {
       </>}
       {tab === "profile" && <>
         <div className="page-heading"><span className="eyebrow">MY RADAR</span><h1>你的校园，你的关注。</h1><p>完善简单资料，让首页优先展示与你相关的机会。</p></div>
-        <div className="profile-layout"><section className="settings-panel"><div className="panel-title"><UserRound size={20} /><h2>我的资料</h2><span className="small-badge">2026 级</span></div><label className="form-field">学院<select aria-label="学院" value={profile.college} onChange={e => setProfile(previous => changeProfileCollege(previous, e.target.value))}>{COLLEGES.map(college => <option key={college}>{college}</option>)}</select></label><MajorSelect key={profile.college} college={profile.college} major={profile.major} onChange={major => setProfile(previous => ({ ...previous, major }))} /><div className="form-field">关注类别 <span>不选择时展示全部相关类别</span><div className="interest-options">{CATEGORIES.map(value => <button key={value} aria-pressed={profile.interests.includes(value)} className={profile.interests.includes(value) ? "selected" : ""} onClick={() => setProfile(previous => ({ ...previous, interests: previous.interests.includes(value) ? previous.interests.filter(c => c !== value) : [...previous.interests, value] }))}><CategoryIcon category={value} size={16} />{value}{profile.interests.includes(value) && <Check size={14} />}</button>)}</div></div><p className="settings-note"><Check size={15} />{storageError ? "本次浏览有效，暂时无法持久保存" : "设置自动保存 · 重要通知仍会优先展示"}</p><button className="primary-button" onClick={() => navigate("radar")}>看看我的雷达 <ArrowRight size={17} /></button></section>
+        <div className="profile-layout"><section className="settings-panel"><div className="panel-title"><UserRound size={20} /><h2>我的资料</h2><span className="small-badge">2026 级</span></div><label className="form-field">学院<select aria-label="学院" value={profile.college} onChange={e => setProfile(previous => changeProfileCollege(previous, e.target.value))}>{COLLEGES.map(college => <option key={college}>{college}</option>)}</select></label><MajorSelect key={profile.college} college={profile.college} major={profile.major} onChange={major => setProfile(previous => ({ ...previous, major }))} /><div className="form-field">关注类别 <span>不选择时展示全部相关类别</span><div className="interest-options">{CATEGORIES.map(value => <button key={value} aria-pressed={profile.interests.includes(value)} className={profile.interests.includes(value) ? "selected" : ""} onClick={() => setProfile(previous => ({ ...previous, interests: previous.interests.includes(value) ? previous.interests.filter(c => c !== value) : [...previous.interests, value] }))}><CategoryIcon category={value} size={16} />{value}{profile.interests.includes(value) && <Check size={14} />}</button>)}</div></div><p className="settings-note"><Check size={15} />{storageError ? "本次浏览有效，暂时无法持久保存" : "设置自动保存 · 重要通知仍会优先展示"}</p><button className="primary-button" onClick={() => navigate("radar")}>看看我的雷达 <ArrowRight size={17} /></button><button className="welcome-profile-entry" type="button" onClick={() => setWelcomeOpen(true)}><Radar size={15} /> 欢迎页与身份确认入口</button></section>
           <div className="profile-side"><section className="source-panel"><div className="panel-title"><Radar size={20} /><h2>信息来源</h2></div><p>以下为最近发布快照中的来源状态；站长采集并上传后，页面数据才会更新。</p>{feed?.sources.map(source => <div className="source-row" key={source.id}><span><a href={source.url} target="_blank" rel="noopener noreferrer">{source.name}</a>{source.lastSuccessAt && <small className="source-time">更新：{formatDate(source.lastSuccessAt)}</small>}{source.note && <small className="source-time">{source.note}</small>}</span><small>{source.state === "ok" ? `已同步 ${source.count} 条` : source.state === "partial" ? `${source.count} 条 · 部分同步` : source.state === "failed" && source.count ? `${source.count} 条 · 更新失败` : source.state === "pending" ? "待配置" : "暂未同步"}</small></div>)}{[{ name: "竞赛聚合平台", stage: "后续补充" }, { name: "易班", stage: "待安排" }].map(source => <div className="source-row" key={source.name}><span>{source.name}</span><small>{source.stage}</small></div>)}</section><section className="notification-note"><Clock3 size={20} /><h3>更新与提醒</h3><p>本站展示最近发布的信息快照。站长采集并上传后更新，静态页面不会自行采集官网或 PU 数据；页面每 5 分钟检查是否有已上传的新快照。收藏仅保存在当前浏览器，可导出日历、导入手机并检查提醒，关闭网页后由日历提示。日历是一次性快照，改期或取消需手动更新；名额不保证实时。</p></section></div>
         </div>
       </>}
