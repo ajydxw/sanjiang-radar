@@ -10,7 +10,7 @@ const entryIsTest = process.env.NEXT_PUBLIC_IDENTITY_ENTRY_MODE !== 'real';
 const chinaDate = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric' });
 
 // Confirmed names come only from the private server session, never local input.
-export default function WelcomeScreen({ onContinue, identitySession }: { onContinue: () => void; identitySession: ReturnType<typeof useIdentity> }) {
+export default function WelcomeScreen({ onContinue, identitySession, summary }: { onContinue: () => void; identitySession: ReturnType<typeof useIdentity>; summary: { relevant: number; soon: number } | null }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [identity, setIdentity] = useState(false);
   const [now, setNow] = useState(() => new Date());
@@ -31,9 +31,11 @@ export default function WelcomeScreen({ onContinue, identitySession }: { onConti
     <div className="welcome-frame">
       <div className="welcome-atmosphere" aria-hidden="true"><span className="welcome-glow glow-one" /><span className="welcome-glow glow-two" /><span className="welcome-dots" /></div>
       <div className="welcome-top"><span className="welcome-brand"><Radar size={17} strokeWidth={1.6} /> SANJIANG RADAR</span><button type="button" onClick={onContinue}>跳过开屏 <ArrowRight size={14} /></button></div>
-      <div className="welcome-center">
-        <div className="welcome-radar" aria-hidden="true"><span className="welcome-ticks" /><span className="welcome-ring ring-one" /><span className="welcome-ring ring-two" /><span className="welcome-ring ring-three" /><span className="welcome-cross cross-one" /><span className="welcome-cross cross-two" /><span className="welcome-sweep" /><i className="welcome-blip blip-one" /><i className="welcome-blip blip-two" /><i className="welcome-blip blip-three" /><span className="welcome-ping" /><span className="welcome-core" /></div>
+      <div className={identity ? "welcome-center identity-open" : "welcome-center"}>
+        {/* Each blip stands for a real relevant record, up to three. */}
+        <div className="welcome-radar" aria-hidden="true"><span className="welcome-ticks" /><span className="welcome-ring ring-one" /><span className="welcome-ring ring-two" /><span className="welcome-ring ring-three" /><span className="welcome-cross cross-one" /><span className="welcome-cross cross-two" /><span className="welcome-sweep" />{["blip-one", "blip-two", "blip-three"].slice(0, Math.min(3, summary?.relevant ?? 0)).map(name => <i key={name} className={`welcome-blip ${name}`} />)}<span className="welcome-ping" /><span className="welcome-core" /></div>
         <div className="welcome-copy"><p className="welcome-kicker">在三江，发现下一种可能</p><h1 id="welcome-title">三江雷达<span>.</span></h1><p id="welcome-description">让有用的信息，及时被看见。</p></div>
+        <p className="welcome-summary" aria-live="polite">{summary ? summary.relevant > 0 ? <>为你找到 <strong>{summary.relevant}</strong> 条相关信息{summary.soon > 0 && <> · <strong>{summary.soon}</strong> 项 7 天内截止</>}</> : "暂时没有新的相关信息" : "正在扫描校园信息…"}</p>
         <div className="welcome-entry">
           <p className="welcome-date"><span>{chinaDate.format(now)}</span>{!greeting.text.startsWith(greeting.weekday) && <span>{greeting.weekday}</span>}</p>
           <p className="welcome-greeting">{personalizedGreeting(greeting.text, identitySession.confirmed ? identitySession.name ?? undefined : undefined)}</p>

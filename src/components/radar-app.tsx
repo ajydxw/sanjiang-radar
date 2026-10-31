@@ -388,7 +388,7 @@ export default function RadarApp() {
   function sectionHeading(title: string, subtitle: string, action: () => void) { return <div className="section-heading"><div><h2>{title}</h2><p>{subtitle}</p></div><button className="text-button" onClick={action}>查看全部 <ArrowRight size={15} /></button></div>; }
 
   return <>
-    {welcomeOpen && <WelcomeScreen onContinue={continueFromWelcome} identitySession={identitySession} />}
+    {welcomeOpen && <WelcomeScreen onContinue={continueFromWelcome} identitySession={identitySession} summary={feed ? { relevant: relevant.length, soon: soon.length } : null} />}
     <header className="site-header"><div className="header-inner"><button className="brand" onClick={() => navigate("radar")} aria-label="三江雷达首页"><span className="brand-icon"><Radar size={25} strokeWidth={1.7} /></span><span>三江雷达<small>SANJIANG RADAR</small></span></button>
       <nav className="desktop-nav" aria-label="主导航">{TABS.map(({ key, label, icon: Icon }) => <button key={key} className={tab === key ? "nav-active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => navigate(key)}><Icon size={17} />{label}{key === "saved" && favorites.length > 0 && <span className="nav-count">{favorites.length}</span>}</button>)}</nav>
       <div className="header-actions"><span className="demo-pill"><span />校园信息试用版</span><button className="avatar-button" aria-label="设置我的学院" onClick={() => navigate("profile")}><UserRound size={20} /></button></div>

@@ -82,7 +82,8 @@ export default function IdentityConfirmation({ identity, onContinue }: { identit
     {!identity.enabled ? <p>姓名＋学号确认暂未开放。私有验证服务准备好后再启用，当前不会收集你的姓名或学号。</p>
       : identity.confirmed ? <><p role="status">{identity.testMode ? '仅测试账号确认成功，不代表真实班级身份。' : '已匹配班级名单。此确认仅用于称呼，不是强本人认证。'}</p><button className="welcome-secondary" type="button" disabled={identity.busy} onClick={() => void identity.logout()}>退出身份确认</button></>
       : <form onSubmit={confirm} className="identity-form" autoComplete="off">
-        <p>可选：姓名与完整学号同时匹配班级名单后，仅为问候添加你的名字。同一设备、同一浏览器会保持确认，正常使用时自动续期；长期不访问、退出、清除 Cookie 或站长撤销后需重新确认。直接浏览也可使用相同功能；名单匹配不能证明操作者本人。</p>
+        <p>可选：仅用于在问候中显示你的名字，正常使用时自动保持确认。</p>
+        <details className="identity-details"><summary>了解更多</summary><p>姓名与完整学号须同时匹配班级名单。确认只保留在当前设备和浏览器，正常使用时自动续期；长期不访问、退出、清除 Cookie 或站长撤销后需重新确认。直接浏览也可使用相同功能；名单匹配不能证明操作者本人。</p></details>
         <label htmlFor="identity-name">姓名<input id="identity-name" value={name} onChange={event => setName(event.target.value)} maxLength={80} required disabled={identity.busy} autoComplete="off" /></label>
         <label htmlFor="identity-student-id">完整学号<input id="identity-student-id" value={studentId} onChange={event => setStudentId(event.target.value)} inputMode="numeric" pattern="[0-9]+" maxLength={32} required disabled={identity.busy} autoComplete="off" /></label>
         <button className="welcome-primary" type="submit" disabled={identity.busy}>{identity.busy ? '正在确认…' : '确认班级身份'}</button>
