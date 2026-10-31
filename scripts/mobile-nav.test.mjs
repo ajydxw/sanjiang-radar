@@ -39,7 +39,9 @@ test('手机导航保留点击和键盘，并支持拖动确认、取消与竖�
     await touch('touchStart', first);
     await touch('touchMove', { x: first.x + (second.x - first.x) * 1.65, y: first.y });
     await page.locator('.mobile-nav.is-dragging').waitFor();
-    assert.equal(new URL(page.url()).hash, '#radar', '滑动途中不切换页面');
+    assert.equal(new URL(page.url()).hash, '#radar', '滑动途中只预览，松手前不改地址');
+    await page.getByRole('heading', { name: '把感兴趣的信息，留给自己。' }).waitFor({ timeout: 3000 });
+    assert.equal(await nav.evaluate(element => Number(getComputedStyle(element).getPropertyValue('--nav-stretch')) >= 1), true, '拖动时选中块随速度拉伸');
     const pill = await nav.locator('.mobile-nav-indicator').boundingBox();
     assert.ok(pill.x + pill.width / 2 > second.x && pill.x + pill.width / 2 < third.x, '选中块连续跟随手指');
     await touch('touchMove', third);
@@ -75,6 +77,7 @@ test('手机导航保留点击和键盘，并支持拖动确认、取消与竖�
     await page.mouse.up();
     await selected(1);
     assert.equal(new URL(page.url()).hash, '#discover', '移出导航后取消，不误点起始按钮');
+    await page.getByRole('heading', { name: '找到你的下一个机会。' }).waitFor({ timeout: 3000 });
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     await page.mouse.move(-30, start.y, { steps: 6 });

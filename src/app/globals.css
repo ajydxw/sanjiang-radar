@@ -677,13 +677,13 @@ body{background:radial-gradient(1100px 420px at 50% -160px,#dfe8fb 0,transparent
 .welcome-copy{animation:welcome-reveal .8s cubic-bezier(.2,.7,.2,1) .45s both}
 .welcome-kicker{display:inline-flex;align-items:center;gap:10px;font-size:11px;letter-spacing:3px;color:var(--w-muted)}
 .welcome-kicker::before,.welcome-kicker::after{content:"";width:18px;height:1px;background:linear-gradient(90deg,transparent,var(--w-ring))}.welcome-kicker::after{transform:scaleX(-1)}
-.welcome-copy h1{font-size:clamp(40px,7vw,52px);font-weight:600;letter-spacing:8px;line-height:1.3;margin:14px 0 12px;padding-left:8px;color:var(--w-ink)}
+.welcome-copy h1{font-size:clamp(28px,4.4vw,34px);font-weight:600;letter-spacing:7px;line-height:1.3;margin:12px 0 8px;padding-left:7px;color:var(--w-ink)}
 .welcome-copy h1>span{color:var(--w-accent);letter-spacing:0;margin-left:-2px;text-shadow:0 0 18px color-mix(in srgb,var(--w-accent) 55%,transparent)}
-.welcome-copy>#welcome-description{font-size:14px;color:var(--w-muted);letter-spacing:1.5px;line-height:1.8}
+.welcome-copy>#welcome-description{font-size:13px;color:var(--w-muted);letter-spacing:1.5px;line-height:1.8}
 .welcome-entry{width:min(100%,320px);margin:40px auto 0;animation:welcome-reveal .8s cubic-bezier(.2,.7,.2,1) .85s both}
 .welcome-date{display:flex;justify-content:center;gap:8px;margin-bottom:8px;font-size:11px;letter-spacing:2px;color:var(--w-soft);font-variant-numeric:tabular-nums}
 .welcome-date>span+span::before{content:"·";margin-right:8px;opacity:.7}
-.welcome-greeting{font-family:ui-serif,"Songti SC","STSong","Noto Serif SC","Source Han Serif SC",serif;font-size:21px;line-height:1.7;letter-spacing:3px;color:var(--w-greeting);margin-bottom:24px}
+.welcome-greeting{font-family:ui-serif,"Songti SC","STSong","Noto Serif SC","Source Han Serif SC",serif;font-size:clamp(28px,3.8vw,34px);font-weight:600;line-height:1.45;letter-spacing:5px;padding-left:5px;color:var(--w-greeting);margin-bottom:26px;text-wrap:balance}
 .welcome-primary,.welcome-secondary{display:flex;align-items:center;justify-content:center;width:100%;gap:10px;min-height:52px;border-radius:16px;font-size:15px;letter-spacing:.6px;transition:transform .2s cubic-bezier(.2,.7,.2,1),box-shadow .2s,background-color .2s,border-color .2s}
 .welcome-primary{position:relative;overflow:hidden;padding:14px 18px 14px 22px;background:var(--w-primary);color:var(--w-primary-ink);font-weight:600;box-shadow:var(--w-primary-shadow),inset 0 1px #ffffff40}
 .welcome-primary>span{flex:1;text-align:left}
@@ -710,7 +710,31 @@ body{background:radial-gradient(1100px 420px at 50% -160px,#dfe8fb 0,transparent
 @keyframes welcome-echo{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(4.2)}}
 @keyframes welcome-ping{0%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(14)}}
 @keyframes welcome-fade{from{opacity:0}}
-@media(max-width:600px){.welcome-frame{padding:16px 20px 18px}.welcome-top{font-size:9px;letter-spacing:1.2px}.welcome-top>button{min-height:38px;padding:0 12px}.welcome-center{padding:18px 0 26px}.welcome-radar{width:176px;height:176px;margin-bottom:28px}.welcome-entry{margin-top:30px}.welcome-bottom{font-size:10px;gap:12px}.welcome-greeting{font-size:19px;margin-bottom:20px}.welcome-copy h1{font-size:40px;letter-spacing:6px;padding-left:6px}.welcome-kicker{font-size:10px;letter-spacing:2.4px}.welcome-copy>#welcome-description{font-size:13px}}
-@media(max-height:700px){.welcome-center{padding-top:8px;padding-bottom:16px}.welcome-radar{width:120px;height:120px;margin-bottom:20px}.welcome-ticks{inset:-8px}.welcome-entry{margin-top:22px}.welcome-greeting{margin-bottom:14px;font-size:18px}.welcome-copy h1{font-size:34px;margin:8px 0}.welcome-bottom{padding-top:8px}}
+@media(max-width:600px){.welcome-frame{padding:16px 20px 18px}.welcome-top{font-size:9px;letter-spacing:1.2px}.welcome-top>button{min-height:38px;padding:0 12px}.welcome-center{padding:18px 0 26px}.welcome-radar{width:176px;height:176px;margin-bottom:28px}.welcome-entry{margin-top:30px}.welcome-bottom{font-size:10px;gap:12px}.welcome-greeting{font-size:27px;letter-spacing:4px;padding-left:4px;margin-bottom:22px}.welcome-copy h1{font-size:28px;letter-spacing:6px;padding-left:6px}.welcome-kicker{font-size:10px;letter-spacing:2.4px}.welcome-copy>#welcome-description{font-size:13px}}
+@media(max-height:700px){.welcome-center{padding-top:8px;padding-bottom:16px}.welcome-radar{width:120px;height:120px;margin-bottom:20px}.welcome-ticks{inset:-8px}.welcome-entry{margin-top:22px}.welcome-greeting{margin-bottom:14px;font-size:23px}.welcome-copy h1{font-size:25px;margin:6px 0}.welcome-bottom{padding-top:8px}}
 @media(prefers-reduced-motion:reduce){.welcome-screen *,.welcome-screen *::before,.welcome-screen *::after{animation:none!important;transition:none!important}.welcome-sweep{opacity:.45;transform:rotate(318deg)}.welcome-ping{display:none}}
 @media(prefers-reduced-transparency:reduce),(forced-colors:active){.welcome-top>button,.welcome-secondary,.welcome-identity{-webkit-backdrop-filter:none;backdrop-filter:none}.welcome-glow,.welcome-dots{display:none}}
+
+/* Phone nav as a glass droplet: it swells under the finger, stretches with speed and overshoots into place. */
+.mobile-nav-indicator{transition:translate .5s cubic-bezier(.3,1.42,.42,1),scale .34s cubic-bezier(.3,1.6,.45,1),box-shadow .25s ease}
+.mobile-nav.is-dragging .mobile-nav-indicator{transition:scale .12s ease-out,box-shadow .25s ease}
+.mobile-nav.is-pressed .mobile-nav-indicator{scale:calc(1.08 * var(--nav-stretch,1)) calc(1.16 / var(--nav-stretch,1));box-shadow:inset 0 1px #fff,inset 0 -8px 14px #ffffff59,0 10px 24px -6px #2f5be040,0 0 0 1px #ffffffd9}
+.mobile-nav button svg{transition:scale .4s cubic-bezier(.3,1.7,.45,1),translate .4s cubic-bezier(.3,1.7,.45,1)}
+.mobile-nav button.nav-active svg{scale:1.1;translate:0 -1px}
+.mobile-nav.is-pressed button.nav-active svg{scale:1.24;translate:0 -2px}
+.mobile-nav button span{transition:color .2s ease}
+@media(max-width:760px){.mobile-nav{transition:scale .34s cubic-bezier(.3,1.6,.45,1)}.mobile-nav.is-pressed{scale:1.018}}
+
+/* Jelly chips: squash on press, wobble back on release; selected ones look like glossy blue gelatin. */
+.category-tabs button,.filter-chip{position:relative;transform-origin:center;transition:scale .45s cubic-bezier(.3,1.6,.45,1),background .2s ease,color .2s ease,border-color .2s ease,box-shadow .25s ease}
+.category-tabs button:active,.filter-chip:active{scale:1.07 .88;transition-duration:.09s}
+.category-tabs button:not(.selected),.filter-chip:not(.active){background:linear-gradient(180deg,#fff,#f4f7fd);box-shadow:inset 0 1px #fff,inset 0 -2px 4px #2f5be00a,0 1px 2px #14203a0d}
+.category-tabs button:not(.selected){border:1px solid #e3e9f4}
+.category-tabs button.selected,.category-tabs button.selected:hover,.filter-chip.active{color:#fff;border-color:transparent;background:radial-gradient(130% 110% at 30% 0%,#7d9bff 0%,#3d66ec 45%,#2549cf 100%);box-shadow:inset 0 2px 1px #ffffff70,inset 0 -4px 8px #1736a666,0 8px 16px -8px #2f5be0cc}
+.category-tabs button.selected::after,.filter-chip.active::after{content:"";position:absolute;left:16%;right:16%;top:2px;height:32%;border-radius:999px;background:linear-gradient(180deg,#ffffff6b,#ffffff00);pointer-events:none}
+.filter-chip.active svg{filter:drop-shadow(0 1px 0 #1736a666)}
+.category-tabs{padding-top:6px;margin-top:15px}
+@media(max-width:760px){.category-tabs{margin-top:11px}.filter-bar{padding-top:6px;padding-bottom:14px;margin-top:7px;margin-bottom:-6px}}
+@media(hover:hover){.category-tabs button:not(.selected):hover,.filter-chip:not(.active):hover{border-color:#c9d6f2;background:linear-gradient(180deg,#fff,#eef3ff)}}
+@media(prefers-reduced-motion:reduce){.mobile-nav.is-pressed,.mobile-nav.is-pressed .mobile-nav-indicator,.mobile-nav button.nav-active svg,.mobile-nav.is-pressed button.nav-active svg,.category-tabs button:active,.filter-chip:active{scale:1;translate:none}}
+@media(forced-colors:active){.category-tabs button.selected::after,.filter-chip.active::after{display:none}}

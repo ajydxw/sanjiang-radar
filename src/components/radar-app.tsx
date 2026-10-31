@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { ArrowRight, Check, ChevronRight, CircleHelp, Clock3, Compass, ExternalLink, GraduationCap, Heart, HeartHandshake, Radar, Search, SlidersHorizontal, Sparkles, UserRound, X } from "lucide-react";
 import { CATEGORIES, COLLEGES, chinaDateKey, deadlineLabel, deadlineTime, eligibilityLabel, formatDate, informationTime, isExamInformation, isOpen, matchesCollege, registrationStatus, rewardLabel, type Category, type Information, type SchoolFeed } from "@/lib/information";
 import { assertPublicFeed } from '../../sources/public-feed.mjs';
@@ -33,13 +33,50 @@ function CategoryIcon({ category, size = 20 }: { category: Category; size?: numb
   return <Icon size={size} aria-hidden="true" />;
 }
 
-function MobileNav({ tab, count, onNavigate }: { tab: Tab; count: number; onNavigate: (tab: Tab) => void }) {
+const prefersReducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/** A light tick: vibration where supported, the iOS 18+ switch-control tick elsewhere (technique from tijnjh/ios-haptics). */
+function haptic() {
+  try {
+    if (typeof navigator.vibrate === "function") { navigator.vibrate(8); return; }
+    const label = document.createElement("label");
+    label.ariaHidden = "true";
+    label.style.display = "none";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.setAttribute("switch", "");
+    label.appendChild(input);
+    document.head.appendChild(label);
+    label.click();
+    label.remove();
+  } catch { /* feedback is a nicety, never a requirement */ }
+}
+
+/** Jelly release: squash, overshoot, settle — wider than tall, then taller than wide, with roughly kept volume. */
+function jelly(element: HTMLElement) {
+  if (prefersReducedMotion() || typeof element.animate !== "function") return;
+  element.animate([
+    { scale: "1.1 0.86" }, { scale: "0.93 1.08", offset: .28 }, { scale: "1.04 0.97", offset: .5 },
+    { scale: "0.985 1.012", offset: .72 }, { scale: "1 1" },
+  ], { duration: 560, easing: "cubic-bezier(.25,.7,.35,1)" });
+}
+
+function MobileNav({ tab, count, onNavigate, onPreview, onRelease }: { tab: Tab; count: number; onNavigate: (tab: Tab) => void; onPreview: (tab: Tab, offset: number) => void; onRelease: (tab: Tab | null, dragged: boolean) => void }) {
   const [dragPosition, setDragPosition] = useState<number | null>(null);
-  const gesture = useRef<{ id: number; button: HTMLButtonElement; x: number; y: number; index: number; width: number; position: number; moved: boolean; cancelled: boolean } | null>(null);
+  const gesture = useRef<{ id: number; button: HTMLButtonElement; x: number; y: number; index: number; width: number; position: number; moved: boolean; cancelled: boolean; preview: number; lastX: number; lastT: number; touch: boolean } | null>(null);
+  const nav = useRef<HTMLElement>(null);
+  const settle = useRef(0);
   const suppressClick = useRef(false);
   const activeIndex = TABS.findIndex(item => item.key === tab);
   const position = dragPosition ?? Math.max(0, activeIndex);
   const preview = dragPosition === null ? activeIndex : Math.round(position);
+
+  // The droplet stretches with finger speed and relaxes once the finger slows.
+  function stretch(value: number) {
+    nav.current?.style.setProperty("--nav-stretch", value.toFixed(3));
+    window.clearTimeout(settle.current);
+    if (value !== 1) settle.current = window.setTimeout(() => nav.current?.style.setProperty("--nav-stretch", "1"), 110);
+  }
 
   function beginGesture(event: ReactPointerEvent<HTMLElement>) {
     if (!event.isPrimary || event.button !== 0 || gesture.current) return;
@@ -50,7 +87,8 @@ function MobileNav({ tab, count, onNavigate }: { tab: Tab; count: number; onNavi
     if (!button || index < 0 || !width) return;
     suppressClick.current = false;
     button.setPointerCapture(event.pointerId);
-    gesture.current = { id: event.pointerId, button, x: event.clientX, y: event.clientY, index, width, position: index, moved: false, cancelled: false };
+    gesture.current = { id: event.pointerId, button, x: event.clientX, y: event.clientY, index, width, position: index, moved: false, cancelled: false, preview: index, lastX: event.clientX, lastT: event.timeStamp, touch: event.pointerType !== "mouse" };
+    stretch(1);
     setDragPosition(index);
   }
 
@@ -67,6 +105,17 @@ function MobileNav({ tab, count, onNavigate }: { tab: Tab; count: number; onNavi
     if (!current.moved && Math.abs(dx) < 6) return;
     current.moved = true;
     current.position = Math.max(0, Math.min(TABS.length - 1, current.index + dx / current.width));
+    const elapsed = Math.max(8, event.timeStamp - current.lastT);
+    const speed = Math.abs(event.clientX - current.lastX) / elapsed; // px per ms
+    current.lastX = event.clientX; current.lastT = event.timeStamp;
+    stretch(Math.min(1.32, 1 + speed * .16));
+    const next = Math.round(current.position);
+    if (next !== current.preview) {
+      current.preview = next;
+      if (current.touch) haptic();
+    }
+    // The page above follows: the nearest tab is shown, nudged by the finger's remaining offset.
+    onPreview(TABS[next].key, current.position - next);
     setDragPosition(current.position);
   }
 
@@ -74,21 +123,22 @@ function MobileNav({ tab, count, onNavigate }: { tab: Tab; count: number; onNavi
     const current = gesture.current;
     if (!current || current.id !== event.pointerId) return;
     gesture.current = null;
+    stretch(1);
     setDragPosition(null);
     const bounds = event.currentTarget.getBoundingClientRect();
     const inside = event.clientY >= bounds.top - 20 && event.clientY <= bounds.bottom + 20;
     // Confirm on release; compatibility clicks may be delayed or omitted after a swipe.
     suppressClick.current = true;
     if (current.button.hasPointerCapture(event.pointerId)) current.button.releasePointerCapture(event.pointerId);
-    if (commit && inside && !current.cancelled) onNavigate(TABS[Math.round(current.position)].key);
+    onRelease(commit && inside && !current.cancelled ? TABS[Math.round(current.position)].key : null, current.moved && !current.cancelled);
   }
 
-  return <nav className={`mobile-nav${dragPosition !== null ? " is-pressed" : ""}${gesture.current?.moved && !gesture.current.cancelled ? " is-dragging" : ""}`} aria-label="手机主导航"
+  return <nav ref={nav} className={`mobile-nav${dragPosition !== null ? " is-pressed" : ""}${gesture.current?.moved && !gesture.current.cancelled ? " is-dragging" : ""}`} aria-label="手机主导航"
     onPointerDown={beginGesture} onPointerMove={moveGesture} onPointerUp={event => finishGesture(event, true)}
     onPointerCancel={event => finishGesture(event, false)} onLostPointerCapture={event => finishGesture(event, false)}
     onContextMenu={event => event.preventDefault()}
     onClickCapture={event => { if (suppressClick.current && event.detail !== 0) { event.preventDefault(); event.stopPropagation(); } suppressClick.current = false; }}>
-    <span className="mobile-nav-indicator" aria-hidden="true" style={{ transform: `translateX(${position * 100}%)`, opacity: preview < 0 ? 0 : 1 }} />
+    <span className="mobile-nav-indicator" aria-hidden="true" style={{ translate: `${position * 100}% 0`, opacity: preview < 0 ? 0 : 1 }} />
     {TABS.map(({ key, label, icon: Icon }, index) => <button type="button" key={key} className={preview === index ? "nav-active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => onNavigate(key)}><Icon size={21} strokeWidth={preview === index ? 2.2 : 1.7} /><span>{label}</span>{key === "saved" && count > 0 && <i>{count}</i>}</button>)}
   </nav>;
 }
@@ -138,6 +188,17 @@ export default function RadarApp() {
   const [now, setNow] = useState(new Date());
   const information = (feed?.items ?? []).filter(item => item.freshmanAllowed !== "excluded");
   const [tab, setTab] = useState<Tab>("radar");
+  // While the phone nav is dragged, the page shows the tab under the finger; the address changes on release.
+  const [previewTab, setPreviewTab] = useState<Tab | null>(null);
+  const view = previewTab ?? tab;
+  const mainShell = useRef<HTMLElement>(null);
+  const previewing = useRef<{ shown: Tab; scroll: number } | null>(null);
+  const pendingScroll = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (pendingScroll.current === null) return;
+    window.scrollTo({ top: pendingScroll.current, behavior: "instant" });
+    pendingScroll.current = null;
+  }, [view]);
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [reminderPreferences, setReminderPreferences] = useState<ReminderPreferences>({});
@@ -226,6 +287,36 @@ export default function RadarApp() {
   }, []);
 
   function navigate(next: Tab) { setTab(next); window.location.hash = next; window.scrollTo({ top: 0, behavior: "smooth" }); }
+  function slidePage(from: Tab, to: Tab) {
+    const main = mainShell.current;
+    const step = TABS.findIndex(item => item.key === to) - TABS.findIndex(item => item.key === from);
+    if (!main || !step || prefersReducedMotion() || typeof main.animate !== "function") return;
+    main.animate([{ opacity: .3, transform: `translateX(${Math.sign(step) * 30}px)` }, { opacity: 1, transform: "none" }], { duration: 300, easing: "cubic-bezier(.2,.8,.2,1)" });
+  }
+  function previewFromNav(next: Tab, offset: number) {
+    const main = mainShell.current;
+    const current = previewing.current ?? (previewing.current = { shown: tab, scroll: window.scrollY });
+    if (main && !prefersReducedMotion()) main.style.translate = `${(-offset * 26).toFixed(1)}px 0`;
+    if (next === current.shown) return;
+    slidePage(current.shown, next);
+    current.shown = next;
+    setPreviewTab(next === tab ? null : next);
+    pendingScroll.current = next === tab ? current.scroll : 0;
+  }
+  function releaseNav(target: Tab | null, dragged: boolean) {
+    const main = mainShell.current;
+    const current = previewing.current;
+    previewing.current = null;
+    if (main?.style.translate) {
+      const from = main.style.translate;
+      main.style.translate = "";
+      if (!prefersReducedMotion() && typeof main.animate === "function") main.animate([{ translate: from }, { translate: "0 0" }], { duration: 420, easing: "cubic-bezier(.3,1.45,.45,1)" });
+    }
+    setPreviewTab(null);
+    if (target && !(dragged && target === tab)) { navigate(target); return; }
+    // Cancelled, or dragged back home: return to the page and spot the visitor left.
+    if (current && current.shown !== tab) { slidePage(current.shown, tab); pendingScroll.current = current.scroll; }
+  }
   function toggleFavorite(id: string) {
     if (!loaded) return;
     const saved = !favorites.includes(id);
@@ -270,7 +361,7 @@ export default function RadarApp() {
   const openFavorites = favoriteItems.filter(item => isOpen(item, now)).sort((a, b) => informationTime(b).localeCompare(informationTime(a)));
   const reminderEvents = buildReminderEvents(favoriteItems, reminderPreferences, now);
   const listed = information.filter(item => {
-    if (tab === "saved") return favorites.includes(item.id);
+    if (view === "saved") return favorites.includes(item.id);
     if (category !== "全部" && item.category !== category) return false;
     if (filters.new && (!visits.newIds.has(item.id) || item.importance === "secondary")) return false;
     if (filters.exam && !isExamInformation(item)) return false;
@@ -302,10 +393,10 @@ export default function RadarApp() {
       <nav className="desktop-nav" aria-label="主导航">{TABS.map(({ key, label, icon: Icon }) => <button key={key} className={tab === key ? "nav-active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => navigate(key)}><Icon size={17} />{label}{key === "saved" && favorites.length > 0 && <span className="nav-count">{favorites.length}</span>}</button>)}</nav>
       <div className="header-actions"><span className="demo-pill"><span />校园信息试用版</span><button className="avatar-button" aria-label="设置我的学院" onClick={() => navigate("profile")}><UserRound size={20} /></button></div>
     </div></header>
-    <main className="main-shell">
+    <main className="main-shell" ref={mainShell}>
       <div className="demo-notice" role="status"><CircleHelp size={15} /><span>{feed ? `最近发布快照：${formatDate(feed.generatedAt)}${feed.sources.some(source => source.state !== "ok") ? " · 部分来源待补齐" : ""}` : feedError ? "校园信息暂时无法读取，请稍后刷新。" : "正在读取校园信息…"}{feed && feedError && " 部分数据暂时无法读取，保留上次成功的数据。"}</span>{feed && <button className="text-button" onClick={() => navigate("profile")}>查看来源 <ChevronRight size={14} /></button>}</div>
       {(storageError || visits.storageError) && <p className="storage-warning" role="status">浏览器暂时无法完整保存记录，收藏、提醒选项、资料或新增标记可能仅在本次浏览中有效。</p>}
-      {tab === "radar" && <>
+      {view === "radar" && <>
         <section className="hero">
           <div className="hero-copy"><div className="eyebrow"><span className="live-dot" />三江学院 · 2026 级新生</div><h1>今天，先看<span>这几件事。</span></h1><p>报名、考试、校园活动，与你有关的先看。</p><div className="hero-summary"><span>今日新增 <strong>{feed ? today.length : "—"}</strong></span><span>7 天内截止 <strong>{feed ? soon.length : "—"}</strong></span><span>有积分学分 <strong>{feed ? creditCount : "—"}</strong></span></div></div>
           <div className="radar-art" aria-hidden="true"><div className="radar-grid"><div className="radar-circle circle-one" /><div className="radar-circle circle-two" /><div className="radar-circle circle-three" /><div className="radar-cross horizontal" /><div className="radar-cross vertical" /><div className="radar-sweep" /><div className="radar-center" /><span className="radar-pin pin-one" /><span className="radar-pin pin-two" /><span className="radar-pin pin-three" /></div><span className="radar-label label-one"><Sparkles size={14} />新的机会</span><span className="radar-label label-two"><Clock3 size={14} />及时关注</span><span className="radar-coordinate">32° N / SANJIANG</span></div>
@@ -331,17 +422,17 @@ export default function RadarApp() {
           <section className="profile-tip"><span className="profile-tip-icon"><SlidersHorizontal size={21} /></span><h3>让雷达更懂你</h3><p>{profile.college === "暂不选择" ? "选择学院和关注类别，让与你相关的信息先出现。" : `已按${profile.college}筛选。你可以随时调整关注类别。`}</p><button className="text-button" onClick={() => navigate("profile")}>调整我的资料 <ArrowRight size={15} /></button></section>
         </aside></div>
       </>}
-      {(tab === "discover" || tab === "saved") && <>
-        <div className="page-heading"><span className="eyebrow">{tab === "saved" ? "MY FAVORITES" : "EXPLORE CAMPUS"}</span><h1>{tab === "saved" ? "把感兴趣的信息，留给自己。" : "找到你的下一个机会。"}</h1><p>{tab === "saved" ? "收藏仅保存在当前浏览器，刷新后仍会保留；不同浏览器和设备之间互不共享。已截止的信息也会保留在这里。" : "按类别、资格和截止时间筛选，少一点翻找，多一点收获。"}</p></div>
-        {tab === "saved" && <ActivityReminders events={reminderEvents} items={favoriteItems} now={now} onOpen={setSelected} onExport={() => exportReminders(favoriteItems)} onManage={() => navigate("saved")} />}
-        {tab === "discover" && <div className="discovery-controls"><label className="search-field"><Search size={19} /><input type="search" aria-label="搜索校园信息" placeholder="搜索活动、竞赛或通知…" value={query} onChange={e => setQuery(e.target.value)} />{query && <button aria-label="清空搜索" onClick={() => setQuery("")}><X size={17} /></button>}</label>
-          <div className="category-tabs" aria-label="信息分类">{["全部", ...CATEGORIES].map(value => <button key={value} className={category === value ? "selected" : ""} aria-pressed={category === value} onClick={() => setCategory(value as Category | "全部")}>{value}</button>)}</div>
-          <div className="filter-bar"><span className="filter-label"><SlidersHorizontal size={15} />筛选</span>{([{ key: "new", label: "上次来看之后新增" }, { key: "available", label: "仅未截止" }, { key: "exam", label: "考试办事" }, { key: "freshman", label: "大一可参加" }, { key: "reward", label: "有积分 / 学分 / 时长" }, { key: "soon", label: "7 天内截止" }, { key: "college", label: "与我的学院相关" }] as const).map(({ key, label }) => <button key={key} aria-pressed={filters[key]} className={`filter-chip ${filters[key] ? "active" : ""}`} onClick={() => setFilters(previous => ({ ...previous, [key]: !previous[key] }))}>{filters[key] && <Check size={13} />}{label}</button>)}</div></div>}
-        {tab === "discover" && filters.new && <p className="visit-filter-note">{visitNote} 记录保存在当前浏览器，短时间刷新保留标记。</p>}
-        <div className="results-header"><p>找到 <strong>{listed.length}</strong> 条{tab === "saved" ? "个人收藏" : "校园信息"}{tab === "discover" && profile.college !== "暂不选择" && filters.college && <span> · {profile.college}</span>}</p><label className="sort-field"><span>排序</span><select aria-label="信息排序" value={sort} onChange={e => setSort(e.target.value)}><option value="latest">最新信息</option><option value="deadline">最早截止</option></select></label></div>
-        <div className="results-grid">{listed.map(item => card(item))}</div>{listed.length === 0 && <div className="empty-state large"><Heart size={36} /><h2>{tab === "saved" ? "还没有收藏，先去发现看看" : "暂时没有匹配的信息"}</h2><p>{tab === "saved" ? "点击卡片右上角的爱心，把感兴趣的信息加入本机收藏。" : "试试更换关键词，或减少筛选条件。"}</p><button className="primary-button" onClick={() => discoverWith({ freshman: false, college: false })}>{tab === "saved" ? "去发现" : "清除筛选"}<ArrowRight size={17} /></button></div>}
+      {(view === "discover" || view === "saved") && <>
+        <div className="page-heading"><span className="eyebrow">{view === "saved" ? "MY FAVORITES" : "EXPLORE CAMPUS"}</span><h1>{view === "saved" ? "把感兴趣的信息，留给自己。" : "找到你的下一个机会。"}</h1><p>{view === "saved" ? "收藏仅保存在当前浏览器，刷新后仍会保留；不同浏览器和设备之间互不共享。已截止的信息也会保留在这里。" : "按类别、资格和截止时间筛选，少一点翻找，多一点收获。"}</p></div>
+        {view === "saved" && <ActivityReminders events={reminderEvents} items={favoriteItems} now={now} onOpen={setSelected} onExport={() => exportReminders(favoriteItems)} onManage={() => navigate("saved")} />}
+        {view === "discover" && <div className="discovery-controls"><label className="search-field"><Search size={19} /><input type="search" aria-label="搜索校园信息" placeholder="搜索活动、竞赛或通知…" value={query} onChange={e => setQuery(e.target.value)} />{query && <button aria-label="清空搜索" onClick={() => setQuery("")}><X size={17} /></button>}</label>
+          <div className="category-tabs" aria-label="信息分类">{["全部", ...CATEGORIES].map(value => <button key={value} className={category === value ? "selected" : ""} aria-pressed={category === value} onClick={event => { jelly(event.currentTarget); setCategory(value as Category | "全部"); }}>{value}</button>)}</div>
+          <div className="filter-bar"><span className="filter-label"><SlidersHorizontal size={15} />筛选</span>{([{ key: "new", label: "上次来看之后新增" }, { key: "available", label: "仅未截止" }, { key: "exam", label: "考试办事" }, { key: "freshman", label: "大一可参加" }, { key: "reward", label: "有积分 / 学分 / 时长" }, { key: "soon", label: "7 天内截止" }, { key: "college", label: "与我的学院相关" }] as const).map(({ key, label }) => <button key={key} aria-pressed={filters[key]} className={`filter-chip ${filters[key] ? "active" : ""}`} onClick={event => { jelly(event.currentTarget); setFilters(previous => ({ ...previous, [key]: !previous[key] })); }}>{filters[key] && <Check size={13} />}{label}</button>)}</div></div>}
+        {view === "discover" && filters.new && <p className="visit-filter-note">{visitNote} 记录保存在当前浏览器，短时间刷新保留标记。</p>}
+        <div className="results-header"><p>找到 <strong>{listed.length}</strong> 条{view === "saved" ? "个人收藏" : "校园信息"}{view === "discover" && profile.college !== "暂不选择" && filters.college && <span> · {profile.college}</span>}</p><label className="sort-field"><span>排序</span><select aria-label="信息排序" value={sort} onChange={e => setSort(e.target.value)}><option value="latest">最新信息</option><option value="deadline">最早截止</option></select></label></div>
+        <div className="results-grid">{listed.map(item => card(item))}</div>{listed.length === 0 && <div className="empty-state large"><Heart size={36} /><h2>{view === "saved" ? "还没有收藏，先去发现看看" : "暂时没有匹配的信息"}</h2><p>{view === "saved" ? "点击卡片右上角的爱心，把感兴趣的信息加入本机收藏。" : "试试更换关键词，或减少筛选条件。"}</p><button className="primary-button" onClick={() => discoverWith({ freshman: false, college: false })}>{view === "saved" ? "去发现" : "清除筛选"}<ArrowRight size={17} /></button></div>}
       </>}
-      {tab === "profile" && <>
+      {view === "profile" && <>
         <div className="page-heading"><span className="eyebrow">MY RADAR</span><h1>你的校园，你的关注。</h1><p>完善简单资料，让首页优先展示与你相关的机会。</p></div>
         <div className="profile-layout"><section className="settings-panel"><div className="panel-title"><UserRound size={20} /><h2>我的资料</h2><span className="small-badge">2026 级</span></div><label className="form-field">学院<select aria-label="学院" value={profile.college} onChange={e => setProfile(previous => changeProfileCollege(previous, e.target.value))}>{!COLLEGES.includes(profile.college) && <option value={profile.college}>{profile.college}（原资料）</option>}{COLLEGES.map(college => <option key={college}>{college}</option>)}</select></label><MajorSelect key={profile.college} college={profile.college} major={profile.major} onChange={major => setProfile(previous => ({ ...previous, major }))} /><div className="form-field">关注类别 <span>不选择时展示全部相关类别</span><div className="interest-options">{CATEGORIES.map(value => <button key={value} aria-pressed={profile.interests.includes(value)} className={profile.interests.includes(value) ? "selected" : ""} onClick={() => setProfile(previous => ({ ...previous, interests: previous.interests.includes(value) ? previous.interests.filter(c => c !== value) : [...previous.interests, value] }))}><CategoryIcon category={value} size={16} />{value}{profile.interests.includes(value) && <Check size={14} />}</button>)}</div></div><p className="settings-note"><Check size={15} />{storageError ? "本次浏览有效，暂时无法持久保存" : "设置自动保存 · 重要通知仍会优先展示"}</p><button className="primary-button" onClick={() => navigate("radar")}>看看我的雷达 <ArrowRight size={17} /></button><button className="welcome-profile-entry" type="button" onClick={() => setWelcomeOpen(true)}><Radar size={15} /> 欢迎页与身份确认入口</button></section>
           <div className="profile-side"><section className="source-panel"><div className="panel-title"><Radar size={20} /><h2>信息来源</h2></div><p>以下为最近发布快照中的来源状态；站长采集并上传后，页面数据才会更新。</p>{feed?.sources.map(source => <div className={`source-row state-${source.state}`} key={source.id}><span><a href={source.url} target="_blank" rel="noopener noreferrer">{source.name}</a>{source.lastSuccessAt && <small className="source-time">最近成功：{formatDate(source.lastSuccessAt)}</small>}{source.lastAttemptAt && source.lastAttemptAt !== source.lastSuccessAt && <small className="source-time">最近尝试：{formatDate(source.lastAttemptAt)}</small>}{source.error && <small className="source-time">{source.error}</small>}{source.note && <small className="source-time">{source.note}</small>}</span><small>{source.state === "ok" ? `已同步 ${source.count} 条` : source.state === "partial" ? `${source.count} 条 · 部分同步` : source.state === "failed" && source.count ? `${source.count} 条 · 更新失败` : source.state === "pending" ? "待配置" : "暂未同步"}</small></div>)}{[{ name: "竞赛聚合平台", stage: "后续补充" }, { name: "易班", stage: "待安排" }].map(source => <div className="source-row state-planned" key={source.name}><span>{source.name}</span><small>{source.stage}</small></div>)}</section><section className="notification-note"><Clock3 size={20} /><h3>更新与提醒</h3><p>本站展示最近发布的信息快照。站长采集并上传后更新，静态页面不会自行采集官网或 PU 数据；页面每 5 分钟检查是否有已上传的新快照。收藏仅保存在当前浏览器，可导出日历、导入手机并检查提醒，关闭网页后由日历提示。日历是一次性快照，改期或取消需手动更新；名额不保证实时。</p></section></div>
@@ -349,7 +440,7 @@ export default function RadarApp() {
       </>}
       <footer className="site-footer"><span><Radar size={15} /> 三江雷达 <span className="footer-dot">·</span> 让有用的信息，及时被看见</span><small>独立学生项目 · 校园信息试用版</small></footer>
     </main>
-    <MobileNav tab={tab} count={favorites.length} onNavigate={navigate} />
+    <MobileNav tab={tab} count={favorites.length} onNavigate={next => { slidePage(tab, next); navigate(next); }} onPreview={previewFromNav} onRelease={releaseNav} />
     {selected && <DetailDialog item={information.find(item => item.id === selected.id) ?? selected} saved={favorites.includes(selected.id)} disabled={!loaded} now={now} reminderOptions={getReminderOptions(reminderPreferences, selected.id)} onReminderChange={options => updateReminder(selected.id, options)} onExport={() => exportReminders([information.find(item => item.id === selected.id) ?? selected])} onClose={() => setSelected(null)} onSave={() => toggleFavorite(selected.id)} />}
     {toast && <div className="toast" role="status"><Check size={17} />{toast}</div>}
   </>;
