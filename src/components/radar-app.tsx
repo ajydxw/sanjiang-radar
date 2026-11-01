@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { startTransition, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { ArrowRight, Check, ChevronRight, CircleHelp, Clock3, Compass, ExternalLink, GraduationCap, Heart, HeartHandshake, Radar, Search, SlidersHorizontal, Sparkles, UserRound, X } from "lucide-react";
 import { CATEGORIES, COLLEGES, chinaDateKey, deadlineLabel, deadlineTime, eligibilityLabel, formatDate, informationTime, isExamInformation, isOpen, matchesCollege, registrationStatus, rewardLabel, type Category, type Information, type SchoolFeed } from "@/lib/information";
 import { assertPublicFeed } from '../../sources/public-feed.mjs';
@@ -20,6 +20,8 @@ type Filters = { freshman: boolean; reward: boolean; soon: boolean; college: boo
 type SavedState = { favorites: string[]; profile: Profile };
 const DEFAULT_PROFILE: Profile = { college: "暂不选择", major: "", interests: [] };
 const STORAGE_KEY = "sanjiang-radar-demo-v1";
+// shortcut: list pages first render this many cards, the rest right after the slide; switch to windowing if lists reach thousands.
+const CARD_BATCH = 24;
 const FEED_PATHS = ["/data/sanjiang-web.json", "/data/pu.json", "/data/wechat.json", "/data/competitions.json", "/data/exams.json"];
 const TABS = [
   { key: "radar" as Tab, label: "今日雷达", icon: Radar },
@@ -68,8 +70,18 @@ function MobileNav({ tab, count, onNavigate, onPreview, onRelease }: { tab: Tab;
   const settle = useRef(0);
   const suppressClick = useRef(false);
   const activeIndex = TABS.findIndex(item => item.key === tab);
-  const position = dragPosition ?? Math.max(0, activeIndex);
-  const preview = dragPosition === null ? activeIndex : Math.round(position);
+  // The page renders in a transition; the droplet lands on the target right away.
+  const [landing, setLanding] = useState<number | null>(null);
+  useEffect(() => setLanding(null), [activeIndex]);
+  const position = dragPosition ?? landing ?? Math.max(0, activeIndex);
+  const preview = dragPosition === null ? landing ?? activeIndex : Math.round(position);
+
+  function land(index: number, touch: boolean) {
+    if (index !== activeIndex) setLanding(index);
+    if (touch) haptic();
+    const indicator = nav.current?.querySelector<HTMLElement>(".mobile-nav-indicator");
+    if (indicator) jelly(indicator);
+  }
 
   // The droplet stretches with finger speed and relaxes once the finger slows.
   function stretch(value: number) {
@@ -130,7 +142,9 @@ function MobileNav({ tab, count, onNavigate, onPreview, onRelease }: { tab: Tab;
     // Confirm on release; compatibility clicks may be delayed or omitted after a swipe.
     suppressClick.current = true;
     if (current.button.hasPointerCapture(event.pointerId)) current.button.releasePointerCapture(event.pointerId);
-    onRelease(commit && inside && !current.cancelled ? TABS[Math.round(current.position)].key : null, current.moved && !current.cancelled);
+    const target = commit && inside && !current.cancelled ? Math.round(current.position) : null;
+    if (target !== null) land(target, current.touch);
+    onRelease(target === null ? null : TABS[target].key, current.moved && !current.cancelled);
   }
 
   return <nav ref={nav} className={`mobile-nav${dragPosition !== null ? " is-pressed" : ""}${gesture.current?.moved && !gesture.current.cancelled ? " is-dragging" : ""}`} aria-label="手机主导航"
@@ -139,7 +153,7 @@ function MobileNav({ tab, count, onNavigate, onPreview, onRelease }: { tab: Tab;
     onContextMenu={event => event.preventDefault()}
     onClickCapture={event => { if (suppressClick.current && event.detail !== 0) { event.preventDefault(); event.stopPropagation(); } suppressClick.current = false; }}>
     <span className="mobile-nav-indicator" aria-hidden="true" style={{ translate: `${position * 100}% 0`, opacity: preview < 0 ? 0 : 1 }} />
-    {TABS.map(({ key, label, icon: Icon }, index) => <button type="button" key={key} className={preview === index ? "nav-active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => onNavigate(key)}><Icon size={21} strokeWidth={preview === index ? 2.2 : 1.7} /><span>{label}</span>{key === "saved" && count > 0 && <i>{count}</i>}</button>)}
+    {TABS.map(({ key, label, icon: Icon }, index) => <button type="button" key={key} className={preview === index ? "nav-active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => { land(index, false); onNavigate(key); }}><Icon size={21} strokeWidth={preview === index ? 2.2 : 1.7} /><span>{label}</span>{key === "saved" && count > 0 && <i>{count}</i>}</button>)}
   </nav>;
 }
 
@@ -194,10 +208,26 @@ export default function RadarApp() {
   const mainShell = useRef<HTMLElement>(null);
   const previewing = useRef<{ shown: Tab; scroll: number } | null>(null);
   const pendingScroll = useRef<number | null>(null);
+  const slideFrom = useRef(0);
+  // After the first tab switch the slide replaces the per-section rise, so the two never stack.
+  const [switched, setSwitched] = useState(false);
+  const [cardBudget, setCardBudget] = useState<{ view: Tab; limit: number }>({ view: "radar", limit: CARD_BATCH });
+  const cardLimit = cardBudget.view === view ? cardBudget.limit : CARD_BATCH;
+  useEffect(() => {
+    const timer = window.setTimeout(() => startTransition(() => setCardBudget({ view, limit: Infinity })), 320);
+    return () => window.clearTimeout(timer);
+  }, [view]);
   useLayoutEffect(() => {
-    if (pendingScroll.current === null) return;
-    window.scrollTo({ top: pendingScroll.current, behavior: "instant" });
+    if (pendingScroll.current !== null) window.scrollTo({ top: pendingScroll.current, behavior: "instant" });
     pendingScroll.current = null;
+    const main = mainShell.current, direction = slideFrom.current;
+    slideFrom.current = 0;
+    if (!main || !direction || prefersReducedMotion() || typeof main.animate !== "function") return;
+    // Slide in only the blocks on screen: animating the whole tall page makes the GPU repaint all of it.
+    for (const part of Array.from(main.children) as HTMLElement[]) {
+      const box = part.getBoundingClientRect();
+      if (box.bottom > 0 && box.top < window.innerHeight) part.animate([{ opacity: .35, transform: `translateX(${direction * 22}px)` }, { opacity: 1, transform: "none" }], { duration: 280, easing: "cubic-bezier(.2,.8,.2,1)" });
+    }
   }, [view]);
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -280,18 +310,20 @@ export default function RadarApp() {
   useEffect(() => {
     const fromHash = () => {
       const value = window.location.hash.slice(1);
-      if (TABS.some(t => t.key === value)) setTab(value as Tab);
+      if (TABS.some(t => t.key === value)) startTransition(() => setTab(value as Tab));
     };
     fromHash(); window.addEventListener("hashchange", fromHash);
     return () => window.removeEventListener("hashchange", fromHash);
   }, []);
 
-  function navigate(next: Tab) { setTab(next); window.location.hash = next; window.scrollTo({ top: 0, behavior: "smooth" }); }
+  function navigate(next: Tab) {
+    if (next === view) window.scrollTo({ top: 0, behavior: "smooth" });
+    else { slidePage(view, next); pendingScroll.current = 0; }
+    startTransition(() => { setTab(next); setSwitched(true); });
+    window.location.hash = next;
+  }
   function slidePage(from: Tab, to: Tab) {
-    const main = mainShell.current;
-    const step = TABS.findIndex(item => item.key === to) - TABS.findIndex(item => item.key === from);
-    if (!main || !step || prefersReducedMotion() || typeof main.animate !== "function") return;
-    main.animate([{ opacity: .3, transform: `translateX(${Math.sign(step) * 30}px)` }, { opacity: 1, transform: "none" }], { duration: 300, easing: "cubic-bezier(.2,.8,.2,1)" });
+    slideFrom.current = Math.sign(TABS.findIndex(item => item.key === to) - TABS.findIndex(item => item.key === from));
   }
   function previewFromNav(next: Tab, offset: number) {
     const main = mainShell.current;
@@ -300,7 +332,7 @@ export default function RadarApp() {
     if (next === current.shown) return;
     slidePage(current.shown, next);
     current.shown = next;
-    setPreviewTab(next === tab ? null : next);
+    startTransition(() => { setPreviewTab(next === tab ? null : next); setSwitched(true); });
     pendingScroll.current = next === tab ? current.scroll : 0;
   }
   function releaseNav(target: Tab | null, dragged: boolean) {
@@ -312,7 +344,7 @@ export default function RadarApp() {
       main.style.translate = "";
       if (!prefersReducedMotion() && typeof main.animate === "function") main.animate([{ translate: from }, { translate: "0 0" }], { duration: 420, easing: "cubic-bezier(.3,1.45,.45,1)" });
     }
-    setPreviewTab(null);
+    startTransition(() => setPreviewTab(null));
     if (target && !(dragged && target === tab)) { navigate(target); return; }
     // Cancelled, or dragged back home: return to the page and spot the visitor left.
     if (current && current.shown !== tab) { slidePage(current.shown, tab); pendingScroll.current = current.scroll; }
@@ -388,12 +420,12 @@ export default function RadarApp() {
   function sectionHeading(title: string, subtitle: string, action: () => void) { return <div className="section-heading"><div><h2>{title}</h2><p>{subtitle}</p></div><button className="text-button" onClick={action}>查看全部 <ArrowRight size={15} /></button></div>; }
 
   return <>
-    {welcomeOpen && <WelcomeScreen onContinue={continueFromWelcome} identitySession={identitySession} summary={feed ? { relevant: relevant.length, soon: soon.length } : null} />}
+    {welcomeOpen && <WelcomeScreen onContinue={continueFromWelcome} identitySession={identitySession} summary={feed ? { relevant: relevant.length, soon: soon.length, freshman: relevant.filter(item => item.freshmanAllowed === "allowed").length, updatedAt: feed.generatedAt, partial: feed.sources.some(source => source.state !== "ok") } : null} />}
     <header className="site-header"><div className="header-inner"><button className="brand" onClick={() => navigate("radar")} aria-label="三江雷达首页"><span className="brand-icon"><Radar size={25} strokeWidth={1.7} /></span><span>三江雷达<small>SANJIANG RADAR</small></span></button>
       <nav className="desktop-nav" aria-label="主导航">{TABS.map(({ key, label, icon: Icon }) => <button key={key} className={tab === key ? "nav-active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => navigate(key)}><Icon size={17} />{label}{key === "saved" && favorites.length > 0 && <span className="nav-count">{favorites.length}</span>}</button>)}</nav>
       <div className="header-actions"><span className="demo-pill"><span />校园信息试用版</span><button className="avatar-button" aria-label="设置我的学院" onClick={() => navigate("profile")}><UserRound size={20} /></button></div>
     </div></header>
-    <main className="main-shell" ref={mainShell}>
+    <main className={switched ? "main-shell tab-switched" : "main-shell"} ref={mainShell}>
       <div className="demo-notice" role="status"><CircleHelp size={15} /><span>{feed ? `最近发布快照：${formatDate(feed.generatedAt)}${feed.sources.some(source => source.state !== "ok") ? " · 部分来源待补齐" : ""}` : feedError ? "校园信息暂时无法读取，请稍后刷新。" : "正在读取校园信息…"}{feed && feedError && " 部分数据暂时无法读取，保留上次成功的数据。"}</span>{feed && <button className="text-button" onClick={() => navigate("profile")}>查看来源 <ChevronRight size={14} /></button>}</div>
       {(storageError || visits.storageError) && <p className="storage-warning" role="status">浏览器暂时无法完整保存记录，收藏、提醒选项、资料或新增标记可能仅在本次浏览中有效。</p>}
       {view === "radar" && <>
@@ -430,7 +462,7 @@ export default function RadarApp() {
           <div className="filter-bar"><span className="filter-label"><SlidersHorizontal size={15} />筛选</span>{([{ key: "new", label: "上次来看之后新增" }, { key: "available", label: "仅未截止" }, { key: "exam", label: "考试办事" }, { key: "freshman", label: "大一可参加" }, { key: "reward", label: "有积分 / 学分 / 时长" }, { key: "soon", label: "7 天内截止" }, { key: "college", label: "与我的学院相关" }] as const).map(({ key, label }) => <button key={key} aria-pressed={filters[key]} className={`filter-chip ${filters[key] ? "active" : ""}`} onClick={event => { jelly(event.currentTarget); setFilters(previous => ({ ...previous, [key]: !previous[key] })); }}>{filters[key] && <Check size={13} />}{label}</button>)}</div></div>}
         {view === "discover" && filters.new && <p className="visit-filter-note">{visitNote} 记录保存在当前浏览器，短时间刷新保留标记。</p>}
         <div className="results-header"><p>找到 <strong>{listed.length}</strong> 条{view === "saved" ? "个人收藏" : "校园信息"}{view === "discover" && profile.college !== "暂不选择" && filters.college && <span> · {profile.college}</span>}</p><label className="sort-field"><span>排序</span><select aria-label="信息排序" value={sort} onChange={e => setSort(e.target.value)}><option value="latest">最新信息</option><option value="deadline">最早截止</option></select></label></div>
-        <div className="results-grid">{listed.map(item => card(item))}</div>{listed.length === 0 && <div className="empty-state large"><Heart size={36} /><h2>{view === "saved" ? "还没有收藏，先去发现看看" : "暂时没有匹配的信息"}</h2><p>{view === "saved" ? "点击卡片右上角的爱心，把感兴趣的信息加入本机收藏。" : "试试更换关键词，或减少筛选条件。"}</p><button className="primary-button" onClick={() => discoverWith({ freshman: false, college: false })}>{view === "saved" ? "去发现" : "清除筛选"}<ArrowRight size={17} /></button></div>}
+        <div className="results-grid">{listed.slice(0, cardLimit).map(item => card(item))}</div>{listed.length === 0 && <div className="empty-state large"><Heart size={36} /><h2>{view === "saved" ? "还没有收藏，先去发现看看" : "暂时没有匹配的信息"}</h2><p>{view === "saved" ? "点击卡片右上角的爱心，把感兴趣的信息加入本机收藏。" : "试试更换关键词，或减少筛选条件。"}</p><button className="primary-button" onClick={() => discoverWith({ freshman: false, college: false })}>{view === "saved" ? "去发现" : "清除筛选"}<ArrowRight size={17} /></button></div>}
       </>}
       {view === "profile" && <>
         <div className="page-heading"><span className="eyebrow">MY RADAR</span><h1>你的校园，你的关注。</h1><p>完善简单资料，让首页优先展示与你相关的机会。</p></div>
@@ -440,7 +472,7 @@ export default function RadarApp() {
       </>}
       <footer className="site-footer"><span><Radar size={15} /> 三江雷达 <span className="footer-dot">·</span> 让有用的信息，及时被看见</span><small>独立学生项目 · 校园信息试用版</small></footer>
     </main>
-    <MobileNav tab={tab} count={favorites.length} onNavigate={next => { slidePage(tab, next); navigate(next); }} onPreview={previewFromNav} onRelease={releaseNav} />
+    <MobileNav tab={tab} count={favorites.length} onNavigate={navigate} onPreview={previewFromNav} onRelease={releaseNav} />
     {selected && <DetailDialog item={information.find(item => item.id === selected.id) ?? selected} saved={favorites.includes(selected.id)} disabled={!loaded} now={now} reminderOptions={getReminderOptions(reminderPreferences, selected.id)} onReminderChange={options => updateReminder(selected.id, options)} onExport={() => exportReminders([information.find(item => item.id === selected.id) ?? selected])} onClose={() => setSelected(null)} onSave={() => toggleFavorite(selected.id)} />}
     {toast && <div className="toast" role="status"><Check size={17} />{toast}</div>}
   </>;

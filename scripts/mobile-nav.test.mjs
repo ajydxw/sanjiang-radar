@@ -12,6 +12,8 @@ test('手机导航保留点击和键盘，并支持拖动确认、取消与竖�
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    // Skip the welcome screen; it has its own tests.
+    await page.addInitScript(() => sessionStorage.setItem('sanjiang-radar-welcome-v1', 'seen'));
     await page.goto(`http://127.0.0.1:${server.address().port}/`, { waitUntil: 'networkidle' });
     const nav = page.getByRole('navigation', { name: '手机主导航' });
     const buttons = nav.locator('button');
