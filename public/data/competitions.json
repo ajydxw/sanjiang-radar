@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-05T00:41:12.083Z",
+  "generatedAt": "2026-11-06T00:14:43.386Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -8,15 +8,15 @@
       "category": "竞赛",
       "source": "中国数学会 · 大学生数学竞赛",
       "sourceType": "competition",
-      "sourcePortal": "https://www.cms.org.cn/Home/comp/comp_details/id/1449.html",
+      "sourcePortal": "https://www.cms.org.cn/upload/file/20260702/1782964399222501.pdf",
       "publishedAt": "2026-07-02",
       "freshmanAllowed": "allowed",
       "eligibilityEvidence": "所有全日制在校大学生",
       "eventStart": "2026-11-14",
       "eventEnd": "2026-11-14",
-      "summary": "三江校内安排与资格需另行确认，可能早于全国系统截止。 全国报名要求：2026年10月19日前；三江校内截止尚未核实。",
-      "registrationNote": "三江校内安排与资格需另行确认，可能早于全国系统截止。 全国报名要求：2026年10月19日前；三江校内截止尚未核实。",
-      "registrationMethod": "通过所在赛区及学校组织报名；全国报名要求不能代替三江学院的校内截止，请先向学校赛事负责老师确认。",
+      "summary": "报名已截止：全国通知要求于2026年10月19日前按所在赛区规定报名；三江校内截止尚未核实，可能更早。初赛定于11月14日，已报名考生请关注学校后续安排，本条不是新开放报名机会。",
+      "registrationNote": "全国通知原文为“2026年10月19日前”报名。日期字段仅按日记录全国要求，用于判断已经截止，不代表可报名至19日当天结束，也不替代三江校内截止；具体时刻及本校安排未核实。",
+      "registrationMethod": "全国报名期已过。已报名考生按所在赛区及学校安排参加11月14日初赛；是否存在其他办理事项须向学校确认，不视为仍可补报名。",
       "colleges": [],
       "rewardNote": "赛事证书、奖项及费用以官方规则为准；三江学分、积分认定尚未核验。",
       "importance": "normal",
@@ -33,8 +33,9 @@
           "url": "https://www.cms.org.cn/upload/file/20260702/1782964399222501.pdf"
         }
       ],
-      "fetchedAt": "2026-10-13T14:32:41.499Z",
-      "firstSeenAt": "2026-10-10T04:49:20.653Z"
+      "fetchedAt": "2026-11-06T00:13:43.471Z",
+      "firstSeenAt": "2026-10-10T04:49:20.653Z",
+      "registrationDeadline": "2026-10-19"
     },
     {
       "id": "competition-7d3c98ad4cd91f1a",
@@ -62,7 +63,7 @@
         "赛将于10月21~22日在四川成都举办，报名时间为2026年9月9日-10月11日。 中国计算机学会大学生"
       ],
       "attachments": [],
-      "fetchedAt": "2026-11-05T00:41:01.687Z",
+      "fetchedAt": "2026-11-06T00:11:02.970Z",
       "firstSeenAt": "2026-10-10T04:49:21.882Z"
     },
     {
@@ -91,7 +92,7 @@
         "职业院校组或自行选择任意组别 报名时间 报名时间：2026年10月8日10:00—2026年12月18日14:00 报名须知 人数及方式"
       ],
       "attachments": [],
-      "fetchedAt": "2026-11-05T00:41:12.026Z",
+      "fetchedAt": "2026-11-06T00:11:09.936Z",
       "firstSeenAt": "2026-10-10T04:49:25.064Z"
     },
     {
@@ -184,11 +185,11 @@
       "name": "中国数学会 · 大学生数学竞赛",
       "url": "https://www.cms.org.cn/index.php/Home/comp/comp/cid/16.html",
       "sourceType": "competition",
-      "state": "failed",
+      "state": "partial",
       "count": 1,
-      "lastSuccessAt": "2026-10-13T14:32:41.931Z",
-      "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
-      "error": "栏目暂不可读，仅检查已知通知：赛事官网返回 HTTP 404；赛事官网返回 HTTP 404"
+      "lastSuccessAt": "2026-11-06T00:13:43.471Z",
+      "note": "本次仅核验原官方 PDF，未成功检查栏目新通知；全国报名已截止，三江校内安排另行核实。",
+      "error": "栏目与通知详情页返回 HTTP 404；原官方 PDF 可读取，已核验其中的报名要求及初赛安排。"
     },
     {
       "id": "competition-ccsp",
@@ -197,7 +198,7 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-05T00:41:04.257Z",
+      "lastSuccessAt": "2026-11-06T00:11:05.351Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
       "error": null
     },
@@ -208,7 +209,7 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-05T00:41:12.053Z",
+      "lastSuccessAt": "2026-11-06T00:11:09.943Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
       "error": null
     },
