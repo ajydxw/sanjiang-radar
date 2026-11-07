@@ -14,6 +14,7 @@ import { createClassAssistantHandler, validatePublicOrigin } from './class-assis
 import { createRadarServer } from './serve-radar.mjs';
 
 const rows = () => Array.from({ length: 35 }, (_, i) => ({ name: `合成成员${i + 1}`, memberKey: `synthetic-${i + 1}` }));
+const studentRows = () => rows().map((row, i) => ({ ...row, studentId: String(20260000000 + i) }));
 const config = (enabled = true) => validateConfig({ ...defaultConfig(), enabled, pricingConfirmed: enabled });
 const json = value => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } });
 function response(overrides = {}) {
@@ -97,6 +98,81 @@ test('35固定成员、终身预算、仅保存码哈希；禁止重导入、扩
   const saved = Buffer.from(await readFile(resolve(f.directory, 'ledger.sqlite'))).toString('utf8');
   assert.ok(!saved.includes(f.credentials[0].accessCode));
   database.close();
+});
+
+test('学号迁移完整匹配35人，保留原账户及费用请求、撤销旧会话；重启后只允许已导入学号登录', async t => {
+  const f = await fixture(t);
+  const previous = f.store.login(f.credentials[0].accessCode);
+  const request = reserve(f.store, previous.memberId, 1000);
+  f.store.settle(request.id, { chargedMicros: 500, answer: '合成迁移前答复', usage: {}, providerId: 'resp_before_migration' });
+  const database = new DatabaseSync(resolve(f.directory, 'ledger.sqlite'));
+  const membersBefore = database.prepare('SELECT id,name,budget,spent,reserved FROM members ORDER BY id').all();
+  const requestsBefore = database.prepare('SELECT * FROM requests ORDER BY id').all();
+  const lock = await acquireClassAssistantLock(f.directory);
+  try {
+    await f.store.migrateStudentIds(studentRows(), { lock });
+    assert.deepEqual(database.prepare('SELECT id,name,budget,spent,reserved FROM members ORDER BY id').all(), membersBefore);
+    assert.deepEqual(database.prepare('SELECT * FROM requests ORDER BY id').all(), requestsBefore);
+    assert.equal(database.prepare('SELECT count(*) AS n FROM sessions').get().n, 0);
+    assert.equal(f.store.authenticate(previous.token), null);
+    for (const credential of f.credentials) assert.throws(() => f.store.login(credential.accessCode), error => error.code === 'login_failed');
+    const claims = JSON.parse(await readFile(resolve(f.directory, 'private-claim-codes.json'), 'utf8'));
+    assert.equal(claims.credentialType, 'studentId');
+    for (const row of studentRows()) {
+      const logged = f.store.login(row.studentId);
+      assert.equal(logged.memberId, membersBefore.find(member => member.name === row.name).id);
+      assert.equal(database.prepare('SELECT code_hash FROM members WHERE id=?').get(logged.memberId).code_hash, digest(row.studentId));
+      assert.equal(claims.members.find(claim => claim.memberKey === row.memberKey).accessCode, row.studentId);
+    }
+  } finally { database.close(); await lock.release(); }
+  await f.restart();
+  const logged = await f.request('login', { accessCode: studentRows()[0].studentId });
+  assert.equal(logged.status, 200);
+  assert.equal(logged.body.member.spentMicros, 500);
+  const unknown = await f.request('login', { accessCode: '20999999999' });
+  assert.equal(unknown.status, 401);
+  assert.equal(f.store.audit().members, 35);
+  assert.equal(f.mock.paid(), 0);
+});
+
+test('学号迁移拒绝缺失/重复/错名/错成员/错误位数，失败保持所有原凭证、会话和领取文件', async t => {
+  const f = await fixture(t);
+  const logged = f.store.login(f.credentials[0].accessCode);
+  const claimPath = resolve(f.directory, 'private-claim-codes.json');
+  const original = await readFile(claimPath, 'utf8');
+  await assert.rejects(f.store.migrateStudentIds(studentRows()), /独占/);
+  const invalid = [studentRows().slice(1), studentRows().map((row, i) => i === 1 ? { ...row, studentId: studentRows()[0].studentId } : row),
+    studentRows().map((row, i) => i === 0 ? { ...row, name: '错误合成姓名' } : row),
+    studentRows().map((row, i) => i === 0 ? { ...row, memberKey: 'different-member' } : row),
+    studentRows().map((row, i) => i === 0 ? { ...row, studentId: '1234567890' } : row)];
+  const lock = await acquireClassAssistantLock(f.directory);
+  try {
+    for (const mapping of invalid) {
+      await assert.rejects(f.store.migrateStudentIds(mapping, { lock }));
+      assert.equal(await readFile(claimPath, 'utf8'), original);
+      assert.equal(f.store.authenticate(logged.token), logged.memberId);
+      assert.throws(() => f.store.login(studentRows()[0].studentId), error => error.code === 'login_failed');
+    }
+    assert.equal(f.store.login(f.credentials[0].accessCode).memberId, logged.memberId);
+  } finally { await lock.release(); }
+});
+
+test('有reserved或held请求禁止学号迁移，且不得自动恢复/释放预占或撤销登录', async t => {
+  const f = await fixture(t);
+  const logged = f.store.login(f.credentials[0].accessCode);
+  const request = reserve(f.store, logged.memberId, 12000);
+  const original = await readFile(resolve(f.directory, 'private-claim-codes.json'), 'utf8');
+  const lock = await acquireClassAssistantLock(f.directory);
+  try {
+    await assert.rejects(f.store.migrateStudentIds(studentRows(), { lock }), /在途或冻结/);
+    assert.equal(f.store.audit().held[0].status, 'reserved');
+    f.store.hold(request.id, 'synthetic_hold');
+    await assert.rejects(f.store.migrateStudentIds(studentRows(), { lock }), /在途或冻结/);
+    assert.equal(f.store.audit().held[0].status, 'held');
+    assert.equal(f.store.audit().reservedMicros, 12000);
+    assert.equal(f.store.authenticate(logged.token), logged.memberId);
+    assert.equal(await readFile(resolve(f.directory, 'private-claim-codes.json'), 'utf8'), original);
+  } finally { await lock.release(); }
 });
 
 test('价格、模型、预算和地址均由服务端固定；BigInt逐请求向上微美元而非按token取整', () => {

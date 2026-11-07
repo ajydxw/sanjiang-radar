@@ -10,17 +10,22 @@ export async function classAssistantCli(args = process.argv.slice(2)) {
     if (!rest[i]?.startsWith('--') || !rest[i + 1] || options.has(rest[i])) throw new Error('CLI参数无效。');
     options.set(rest[i], rest[i + 1]);
   }
-  const valid = command === 'init' ? ['--roster'] : command === 'audit' ? [] : command === 'reconcile' ? ['--request-id', '--charged-micros', '--note'] : null;
-  if (!valid || options.size !== valid.length || valid.some(key => !options.has(key))) throw new Error('用法：init --roster 私有JSON路径 | audit | reconcile --request-id UUID --charged-micros 整数 --note 上游账单核对证据');
+  const valid = ['init', 'migrate-student-ids'].includes(command) ? ['--roster'] : command === 'audit' ? [] : command === 'reconcile' ? ['--request-id', '--charged-micros', '--note'] : null;
+  if (!valid || options.size !== valid.length || valid.some(key => !options.has(key))) throw new Error('用法：init或migrate-student-ids --roster 私有JSON路径 | audit | reconcile --request-id UUID --charged-micros 整数 --note 上游账单核对证据');
   const lock = command === 'audit' ? null : await acquireClassAssistantLock();
   let store;
   try {
     store = await createClassAssistantStore({ lock, readOnly: command === 'audit', recoverPending: command === 'reconcile' });
-    if (command === 'init') {
+    if (command === 'init' || command === 'migrate-student-ids') {
       const text = await readFile(privatePath(resolve(options.get('--roster'))), 'utf8');
       if (Buffer.byteLength(text) > 32768) throw new Error('名单文件过大。');
-      const initialized = await store.initialize(JSON.parse(text));
-      console.log(`已初始化${initialized.count}个独立账户；私有领取文件已写入 .sites-runtime/class-assistant/private-claim-codes.json。请只将每人的访问码分发给本人。`);
+      if (command === 'init') {
+        const initialized = await store.initialize(JSON.parse(text));
+        console.log(`已初始化${initialized.count}个独立账户；私有领取文件已写入 .sites-runtime/class-assistant/private-claim-codes.json。请只将每人的访问码分发给本人。`);
+      } else {
+        const migrated = await store.migrateStudentIds(JSON.parse(text), { lock });
+        console.log(`已将${migrated.count}个既有账户切换为学号访问码，并撤销旧会话；账户及费用账本保留。私有领取文件已更新，不输出学号或凭证。`);
+      }
     } else if (command === 'audit') console.log(JSON.stringify(store.audit(), null, 2));
     else {
       const amount = options.get('--charged-micros');

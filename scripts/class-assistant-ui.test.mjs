@@ -34,7 +34,7 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   await page.route('**/api/class-assistant/**', async route => {
     const name = new URL(route.request().url()).pathname.split('/').at(-1);
     if (name === 'login') {
-      assert.deepEqual(route.request().postDataJSON(), { accessCode: 'synthetic-test-code' });
+      assert.deepEqual(route.request().postDataJSON(), { accessCode: '00000000001' });
       authenticated = true;
       await route.fulfill({ json: { ok: true } });
     } else if (name === 'logout') {
@@ -52,7 +52,7 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
     } else await route.fulfill({ status: 404, json: { error: 'unknown mock', code: 'unknown' } });
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/assistant/`);
-  await page.getByLabel('专属访问码').fill('synthetic-test-code');
+  await page.getByLabel('学号').fill('00000000001');
   await page.getByRole('button', { name: '进入助手' }).click();
   await page.getByRole('heading', { name: '你好，测试同学' }).waitFor();
   assert.equal(await page.locator('.ca-model').count(), 4);
@@ -96,8 +96,8 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   await page.getByRole('button', { name: '刷新余额' }).click();
   assert.equal(chats, 2);
   await page.getByRole('button', { name: '退出', exact: true }).click();
-  await page.getByLabel('专属访问码').waitFor();
+  await page.getByLabel('学号').waitFor();
   assert.equal(await page.getByText('这是一条合成测试回答。').count(), 0);
   const storage = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
-  assert.ok(!storage.includes('synthetic-test-code') && !storage.includes('合成测试回答'));
+  assert.ok(!storage.includes('00000000001') && !storage.includes('合成测试回答'));
 });

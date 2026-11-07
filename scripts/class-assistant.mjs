@@ -147,7 +147,7 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
       }
       const input = await readJson(req);
       if (endpoint === 'login') {
-        if (!exactObject(input, ['accessCode']) || typeof input.accessCode !== 'string' || input.accessCode.length > 512) throw assistantError(401, 'login_failed', '访问码无效或暂不可用。');
+        if (!exactObject(input, ['accessCode']) || typeof input.accessCode !== 'string' || input.accessCode.length > 512) throw assistantError(401, 'login_failed', '学号无效或暂不可用。');
         const logged = store.login(input.accessCode, token);
         res.setHeader('Set-Cookie', cookie(logged.token));
         send(200, session(logged.memberId));
@@ -157,7 +157,7 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
         res.setHeader('Set-Cookie', cookie('', true));
         send(200, session());
       } else {
-        if (!memberId) throw assistantError(401, 'authentication_required', '请先使用本人访问码登录。');
+        if (!memberId) throw assistantError(401, 'authentication_required', '请先使用本人学号登录。');
         send(200, await chat(memberId, input));
       }
     } catch (error) {

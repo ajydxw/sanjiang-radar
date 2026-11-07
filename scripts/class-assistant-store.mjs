@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { chmod, lstat, mkdir, open, readFile, realpath, unlink, writeFile } from 'node:fs/promises';
+import { renameSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { secureDirectory } from './local-secrets.mjs';
@@ -12,6 +13,8 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 export const validRequestId = value => typeof value === 'string' && uuid.test(value);
 const safeInteger = (value, max = MEMBER_BUDGET_MICROS) => Number.isSafeInteger(value) && value >= 0 && value <= max;
 const activeLocks = new WeakSet();
+const accessCodePattern = /^(?:[A-Za-z0-9_-]{43}|[0-9]{11})$/;
+const rosterRevision = rows => digest(JSON.stringify(rows.map(row => [row.memberKey, row.name]).sort(([a], [b]) => a.localeCompare(b))));
 
 export function privatePath(path) {
   const result = resolve(path), rel = relative(PRIVATE_ROOT, result);
@@ -160,7 +163,7 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
     async initialize(rows) {
       validateRoster(rows);
       if (configured()) throw new Error('名单已初始化；禁止重置余额或重新导入。');
-      const revision = digest(JSON.stringify(rows.map(row => [row.memberKey, row.name]).sort(([a], [b]) => a.localeCompare(b))));
+      const revision = rosterRevision(rows);
       const credentials = rows.map(row => ({ name: row.name, memberKey: row.memberKey, accessCode: randomBytes(32).toString('base64url') }));
       const credentialsPath = resolve(directory, 'private-claim-codes.json');
       // Create the owner-only claim file before committing hashes, so a disk failure cannot lose the only codes.
@@ -175,6 +178,74 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
       } catch (error) { await unlink(credentialsPath); throw error; }
       return { count: MEMBER_COUNT, credentialsPath };
     },
+    async migrateStudentIds(rows, { lock: migrationLock } = {}) {
+      const requireLock = () => {
+        if (readOnly || !activeLocks.has(migrationLock) || migrationLock.directory !== directory) throw new Error('迁移必须先停止服务并独占锁定原账本。');
+      };
+      const requireReady = () => {
+        requireLock();
+        if (!configured() || db.prepare("SELECT 1 FROM requests WHERE status IN ('reserved','held') LIMIT 1").get()) throw new Error('迁移需要已初始化且没有在途或冻结请求的账本。');
+      };
+      requireReady();
+      if (!Array.isArray(rows) || rows.some(row => !exactObject(row, ['memberKey', 'name', 'studentId'])
+        || typeof row.studentId !== 'string' || !/^[0-9]{11}$/.test(row.studentId))
+        || new Set(rows.map(row => row.studentId)).size !== MEMBER_COUNT) throw new Error('学号映射必须包含35个唯一的11位学号。');
+      validateRoster(rows.map(({ memberKey, name }) => ({ memberKey, name })));
+      const revision = db.prepare('SELECT roster_hash FROM settings WHERE id=1').get().roster_hash;
+      if (rosterRevision(rows) !== revision) throw new Error('学号映射与原35人姓名及成员标识不完全匹配。');
+      const credentialsPath = resolve(directory, 'private-claim-codes.json');
+      const info = await lstat(credentialsPath);
+      if (!info.isFile() || info.isSymbolicLink() || info.size > 32768) throw new Error('原私有领取文件不可用。');
+      const original = await readFile(credentialsPath, 'utf8');
+      const claims = JSON.parse(original).members;
+      if (!Array.isArray(claims) || claims.some(row => !exactObject(row, ['memberKey', 'name', 'accessCode'])
+        || typeof row.accessCode !== 'string' || !accessCodePattern.test(row.accessCode))) throw new Error('原私有领取文件格式无效。');
+      validateRoster(claims.map(({ memberKey, name }) => ({ memberKey, name })));
+      if (rosterRevision(claims) !== revision) throw new Error('原领取文件与账本名单不一致。');
+      const byKey = new Map(claims.map(row => [row.memberKey, row]));
+      const mappings = rows.map(row => {
+        const previous = byKey.get(row.memberKey);
+        const member = previous && previous.name === row.name
+          ? db.prepare('SELECT id,name FROM members WHERE code_hash=?').get(digest(previous.accessCode)) : null;
+        if (!member || member.name !== row.name) throw new Error('领取文件无法准确定位原账户，未改动任何账户。');
+        return { id: member.id, ...row };
+      });
+      if (new Set(mappings.map(row => row.id)).size !== MEMBER_COUNT) throw new Error('原账户映射不唯一。');
+      const suffix = randomUUID();
+      const temporary = resolve(directory, `.claim-migration-${suffix}.json`);
+      const backup = resolve(directory, `.claim-before-migration-${suffix}.json`);
+      const createdFiles = new Set();
+      const saveDurably = async (path, contents) => {
+        const handle = await open(path, 'wx', 0o600);
+        createdFiles.add(path);
+        try { await handle.writeFile(contents); await handle.sync(); } finally { await handle.close(); }
+      };
+      let promoted = false, committed = false, restored = false;
+      try {
+        await saveDurably(backup, original);
+        await saveDurably(temporary, JSON.stringify({ warning: '仅供站长保管；学号即访问码，可被知晓学号的人冒用。禁止公开整份名单。', credentialType: 'studentId',
+          members: rows.map(({ memberKey, name, studentId }) => ({ memberKey, name, accessCode: studentId })) }, null, 2));
+        transaction(() => {
+          requireReady();
+          const update = db.prepare('UPDATE members SET code_hash=? WHERE id=?');
+          // Clear old hashes within the same transaction so legitimate identifier corrections may swap values.
+          for (const row of mappings) update.run(digest(randomBytes(32)), row.id);
+          for (const row of mappings) update.run(digest(row.studentId), row.id);
+          db.prepare('DELETE FROM sessions').run();
+          renameSync(temporary, credentialsPath);
+          promoted = true;
+        });
+        committed = true;
+      } catch (error) {
+        if (promoted) { renameSync(backup, credentialsPath); restored = true; }
+        throw error;
+      } finally {
+        if (createdFiles.has(temporary)) await unlink(temporary).catch(() => {});
+        // A crash/failed restore leaves the owner-only backup for manual recovery; never discard that evidence.
+        if (createdFiles.has(backup) && (!promoted || committed || restored)) await unlink(backup).catch(() => {});
+      }
+      return { count: MEMBER_COUNT, credentialsPath };
+    },
     throttle(key, limit, periodMs = 60000) {
       transaction(() => {
         const window = Math.floor(Date.now() / periodMs);
@@ -187,7 +258,7 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
     login(code, previousToken = null) {
       const hash = digest(typeof code === 'string' ? code : '');
       const member = db.prepare('SELECT id FROM members WHERE code_hash=?').get(hash);
-      if (!configured() || !member || !/^[A-Za-z0-9_-]{43}$/.test(code)) throw assistantError(401, 'login_failed', '访问码无效或暂不可用。');
+      if (!configured() || !member || !accessCodePattern.test(code)) throw assistantError(401, 'login_failed', '学号无效或暂不可用。');
       const token = randomBytes(32).toString('base64url');
       transaction(() => {
         db.prepare('DELETE FROM sessions WHERE expires<=?').run(Date.now());
@@ -210,7 +281,7 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
         if (existing) return { created: false, request: existing };
         if (this.halted()) throw assistantError(503, 'billing_halted', '费用核对异常，所有付费请求已暂停。');
         const member = getMember(memberId);
-        if (!member) throw assistantError(401, 'authentication_required', '请先使用本人访问码登录。');
+        if (!member) throw assistantError(401, 'authentication_required', '请先使用本人学号登录。');
         if (this.blocked(memberId)) throw assistantError(423, 'account_held', '上次请求尚待站长核对，暂不能继续消费。');
         if (member.budget - member.spent - member.reserved < reservation) throw assistantError(402, 'insufficient_balance', '余额不足以预留本次请求的最高费用。');
         if (model.key === 'astra' && this.modelQuota(memberId, model.key).remainingMicros < reservation) throw assistantError(402, 'model_quota_exceeded', 'GPT-6 Astra的个人终身子额度不足以预留本次请求；仍可使用其它模型的剩余总额度。');

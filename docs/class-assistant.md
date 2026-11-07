@@ -25,9 +25,9 @@
 
 ## 35 人访问控制
 
-站长在本机导入恰好 35 个唯一成员，每人领取独立随机访问码。服务端存储访问码哈希，登录后使用 HttpOnly、SameSite Cookie。名单、访问码领取表、会话和费用账本全部放在被 Git 忽略的 `.sites-runtime/class-assistant/`，不得复制进 `public/`、`out/`、GitHub 或发送给 API。
+站长在本机导入恰好 35 个唯一成员。初始化先生成随机访问码，站长可按已确认要求将这35个既有账户统一迁移为11位学号访问码。服务端仅存储访问码哈希，登录后使用 HttpOnly、SameSite Cookie。名单、访问码领取表、会话和费用账本全部放在被 Git 忽略的 `.sites-runtime/class-assistant/`，不得复制进 `public/`、`out/`、GitHub 或发送给 API。
 
-不提供公开注册。姓名或学号不作为密码，也不接受浏览器传来的成员编号来指定扣谁的额度。访问码只单独交给本人；如果主动把访问码借给他人，系统无法识别屏幕前实际是谁。
+不提供公开注册，不接受未知学号或浏览器传来的成员编号来指定扣谁的额度。按站长要求使用学号作为访问码后，知道他人学号的人也能冒用其账户和余额；姓名学号问候功能的旧登录仍不能用于付费接口。
 
 ## 扣费流程
 
@@ -66,6 +66,14 @@ npm run class-assistant:admin -- init --roster .sites-runtime/class-assistant/ro
 ```
 
 输入格式为35条 `{ "name": "姓名", "memberKey": "班级内唯一标识" }`，不需要另收集学号。只能在本机使用。凭证领取文件为 `.sites-runtime/class-assistant/private-claim-codes.json`；不要整份发到班级群，应逐人分发。服务器的私有账本保留请求结果和用量用于防止重复扣费及对账，不向其他成员公开。
+
+将既有35个账户切换为学号访问码时，先正常停止服务，确认没有在途或冻结请求，保留原账本及私有领取文件，并准备 `.sites-runtime/class-assistant/roster-student-ids.json`。内容为35条 `{ "memberKey": "原成员标识", "name": "原姓名", "studentId": "11位学号" }`，成员标识、姓名必须完整匹配原名单，学号必须唯一。然后执行：
+
+```powershell
+npm run class-assistant:admin -- migrate-student-ids --roster .sites-runtime/class-assistant/roster-student-ids.json
+```
+
+命令独占锁定账本，先校验整份映射，再一次替换所有访问码哈希并撤销旧会话，保留账户ID、预算、已用费用、请求和限流记录。原随机码失效，私有领取文件更新为学号；日志不会打印姓名、学号或访问码。映射不完整、不匹配或存在未决请求时不迁移。若进程异常中断遗留 `.claim-before-migration-*.json` 私有备份，先核对账本与领取文件的一致性并恢复原领取文件，勿删除账本或直接重复初始化。
 
 ## 之后接入 API
 
