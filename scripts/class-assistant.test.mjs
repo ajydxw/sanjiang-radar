@@ -175,6 +175,84 @@ test('有reserved或held请求禁止学号迁移，且不得自动恢复/释放�
   } finally { await lock.release(); }
 });
 
+test('登录审计仅记录成功登录的内部账户ID与时间，失败输入和会话刷新不记录，重启保留历史', async t => {
+  const f = await fixture(t);
+  const database = new DatabaseSync(resolve(f.directory, 'ledger.sqlite'));
+  const columns = database.prepare('PRAGMA table_info(login_events)').all().map(row => row.name);
+  assert.deepEqual(columns, ['id', 'member_id', 'logged_at']);
+  assert.equal(database.prepare('SELECT count(*) AS n FROM login_events').get().n, 0);
+  const logged = await f.login();
+  const memberId = f.store.authenticate(logged.cookie.split('=')[1]);
+  assert.equal(database.prepare('SELECT count(*) AS n FROM login_events').get().n, 1);
+  const event = database.prepare('SELECT member_id,logged_at FROM login_events').get();
+  assert.equal(event.member_id, memberId);
+  assert.ok(Number.isSafeInteger(event.logged_at) && event.logged_at <= Date.now());
+  await f.request('session', undefined, logged.cookie);
+  await f.request('login', { accessCode: '20999999999' });
+  await f.request('login', { accessCode: 'arbitrary-failed-private-input' });
+  assert.equal(database.prepare('SELECT count(*) AS n FROM login_events').get().n, 1);
+  database.close();
+  await f.restart();
+  const reopened = new DatabaseSync(resolve(f.directory, 'ledger.sqlite'));
+  assert.equal(reopened.prepare('SELECT count(*) AS n FROM login_events').get().n, 1);
+  assert.equal((await f.login()).status, 200);
+  assert.equal(reopened.prepare('SELECT count(*) AS n FROM login_events').get().n, 2);
+  reopened.close();
+});
+
+test('owner只读报告按私有学号映射登录与既有使用记录，保留held，不泄漏问题/答复/密码字段或改账', async t => {
+  const f = await fixture(t);
+  const lock = await acquireClassAssistantLock(f.directory);
+  try { await f.store.migrateStudentIds(studentRows(), { lock }); } finally { await lock.release(); }
+  const first = f.store.login(studentRows()[0].studentId);
+  f.store.login(studentRows()[0].studentId);
+  const second = f.store.login(studentRows()[1].studentId);
+  const completed = reserve(f.store, first.memberId, 1000);
+  f.store.settle(completed.id, { chargedMicros: 500, answer: '不应进入报告的合成回答', usage: {}, providerId: 'resp_synthetic_report' });
+  const held = reserve(f.store, second.memberId, 3000);
+  f.store.hold(held.id, 'synthetic_hold');
+  const before = f.store.audit();
+  const reader = await createClassAssistantStore({ directory: f.directory, readOnly: true });
+  try { await reader.writeUsageReport(); } finally { reader.close(); }
+  assert.deepEqual(f.store.audit(), before);
+  const text = await readFile(resolve(f.directory, 'usage-report.json'), 'utf8');
+  const report = JSON.parse(text);
+  assert.deepEqual(report.totals, { members: 35, loggedInMembers: 2, usingMembers: 2, loginCount: 3, requestCount: 2, spentMicros: 500, reservedMicros: 3000 });
+  assert.ok(Number.isFinite(Date.parse(report.loginAuditStartedAt)));
+  const row = report.members.find(member => member.studentId === studentRows()[0].studentId);
+  assert.equal(row.loginCount, 2);
+  assert.equal(row.requestCount, 1);
+  assert.equal(row.requests[0].requestId, completed.id);
+  assert.equal(row.requests[0].chargedMicros, 500);
+  assert.equal(row.requests[0].modelKey, 'sol');
+  assert.ok(Number.isFinite(Date.parse(row.lastLoginAt)) && Number.isFinite(Date.parse(row.lastUseAt)));
+  const pending = report.members.find(member => member.studentId === studentRows()[1].studentId);
+  assert.equal(pending.requests[0].status, 'held');
+  assert.equal(pending.requests[0].reservedMicros, 3000);
+  const unused = report.members.find(member => member.studentId === studentRows()[2].studentId);
+  assert.equal(unused.loginCount, 0);
+  assert.equal(unused.lastLoginAt, null);
+  assert.equal(unused.requestCount, 0);
+  for (const forbidden of ['不应进入报告的合成回答', 'accessCode', 'code_hash', 'fingerprint', 'provider_id', 'arbitrary-failed-private-input']) assert.ok(!text.includes(forbidden));
+});
+
+test('owner报告遇未知/缺失学号映射安全失败且不覆盖上次报告，随机访问码不能冒充学号报告', async t => {
+  const f = await fixture(t);
+  const path = resolve(f.directory, 'usage-report.json');
+  await writeFile(path, 'previous-private-report', { mode: 0o600 });
+  await assert.rejects(f.store.writeUsageReport(), /学号/);
+  const lock = await acquireClassAssistantLock(f.directory);
+  try { await f.store.migrateStudentIds(studentRows(), { lock }); } finally { await lock.release(); }
+  const claimPath = resolve(f.directory, 'private-claim-codes.json');
+  const claims = JSON.parse(await readFile(claimPath, 'utf8'));
+  claims.members[0].accessCode = '20999999999';
+  await writeFile(claimPath, JSON.stringify(claims));
+  await assert.rejects(f.store.writeUsageReport(), /定位原账户/);
+  assert.equal(await readFile(path, 'utf8'), 'previous-private-report');
+  assert.equal(f.store.audit().spentMicros, 0);
+  assert.equal(f.store.audit().reservedMicros, 0);
+});
+
 test('价格、模型、预算和地址均由服务端固定；BigInt逐请求向上微美元而非按token取整', () => {
   const cfg = config();
   assert.equal(costMicros(cfg.models[3].prices, 1, 0, 1), 1);

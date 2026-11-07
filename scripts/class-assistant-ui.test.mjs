@@ -58,7 +58,9 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   assert.equal(await page.locator('.ca-model').count(), 4);
   assert.deepEqual(await page.locator('.ca-model strong').allTextContents(), ['GPT-6 Luna', 'GPT-6.1 Terra', 'GPT-6.1 Sol', 'GPT-6 Astra']);
   await page.getByText('日常问答推荐').waitFor();
-  await page.getByText('日常问题先用 Luna，更省额度').waitFor();
+  await page.getByText('当前仅支持文字问答。日常问题先用 Luna，更省额度。').waitFor();
+  for (const text of ['解释一个园林术语', '把一段说明改清楚', '比较两种设计思路', '预算、场地与维护的取舍']) await page.getByText(text, { exact: false }).waitFor();
+  assert.equal(await page.getByRole('link', { name: '官方模型说明' }).getAttribute('href'), 'https://developers.openai.com/api/docs/guides/model-selection');
   for (const count of [10, 305, 611, 6119]) await page.getByText(`约 ${count} 次 · 按当前余额估算`).waitFor();
   assert.equal(await page.getByText('暂不可用', { exact: true }).count(), 4);
   await page.getByText('专属上限 $0.350000 · 可用 $0.350000（包含在总额度内）').waitFor();

@@ -10,12 +10,13 @@ export async function classAssistantCli(args = process.argv.slice(2)) {
     if (!rest[i]?.startsWith('--') || !rest[i + 1] || options.has(rest[i])) throw new Error('CLI参数无效。');
     options.set(rest[i], rest[i + 1]);
   }
-  const valid = ['init', 'migrate-student-ids'].includes(command) ? ['--roster'] : command === 'audit' ? [] : command === 'reconcile' ? ['--request-id', '--charged-micros', '--note'] : null;
-  if (!valid || options.size !== valid.length || valid.some(key => !options.has(key))) throw new Error('用法：init或migrate-student-ids --roster 私有JSON路径 | audit | reconcile --request-id UUID --charged-micros 整数 --note 上游账单核对证据');
-  const lock = command === 'audit' ? null : await acquireClassAssistantLock();
+  const readOnly = ['audit', 'usage-report'].includes(command);
+  const valid = ['init', 'migrate-student-ids'].includes(command) ? ['--roster'] : readOnly ? [] : command === 'reconcile' ? ['--request-id', '--charged-micros', '--note'] : null;
+  if (!valid || options.size !== valid.length || valid.some(key => !options.has(key))) throw new Error('用法：init或migrate-student-ids --roster 私有JSON路径 | audit | usage-report | reconcile --request-id UUID --charged-micros 整数 --note 上游账单核对证据');
+  const lock = readOnly ? null : await acquireClassAssistantLock();
   let store;
   try {
-    store = await createClassAssistantStore({ lock, readOnly: command === 'audit', recoverPending: command === 'reconcile' });
+    store = await createClassAssistantStore({ lock, readOnly, recoverPending: command === 'reconcile' });
     if (command === 'init' || command === 'migrate-student-ids') {
       const text = await readFile(privatePath(resolve(options.get('--roster'))), 'utf8');
       if (Buffer.byteLength(text) > 32768) throw new Error('名单文件过大。');
@@ -27,6 +28,10 @@ export async function classAssistantCli(args = process.argv.slice(2)) {
         console.log(`已将${migrated.count}个既有账户切换为学号访问码，并撤销旧会话；账户及费用账本保留。私有领取文件已更新，不输出学号或凭证。`);
       }
     } else if (command === 'audit') console.log(JSON.stringify(store.audit(), null, 2));
+    else if (command === 'usage-report') {
+      await store.writeUsageReport();
+      console.log('使用报告已写入本机私有 .sites-runtime/class-assistant/usage-report.json；未输出姓名、学号或凭证。');
+    }
     else {
       const amount = options.get('--charged-micros');
       if (!/^(0|[1-9]\d{0,7})$/.test(amount)) throw new Error('金额必须是非负整数微美元。');

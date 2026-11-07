@@ -107,7 +107,10 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
     CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, member_id TEXT NOT NULL REFERENCES members(id), expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, window INTEGER NOT NULL, count INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS runtime_flags (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS login_events (id INTEGER PRIMARY KEY, member_id TEXT NOT NULL REFERENCES members(id), logged_at INTEGER NOT NULL CHECK(logged_at>0));
+    CREATE INDEX IF NOT EXISTS member_logins ON login_events(member_id,logged_at);
   `);
+  if (!readOnly) db.prepare("INSERT OR IGNORE INTO runtime_flags(key,value) VALUES('login_audit_started_at',?)").run(String(Date.now()));
   function transaction(fn) {
     db.exec('BEGIN IMMEDIATE');
     try { const value = fn(); db.exec('COMMIT'); return value; }
@@ -121,6 +124,28 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
     return { name: member.name, budgetMicros: member.budget, spentMicros: member.spent,
       reservedMicros: member.reserved, remainingMicros: member.budget - member.spent - member.reserved };
   };
+  async function readPrivateClaims() {
+    const credentialsPath = resolve(directory, 'private-claim-codes.json');
+    const info = await lstat(credentialsPath);
+    if (!info.isFile() || info.isSymbolicLink() || info.size > 32768) throw new Error('原私有领取文件不可用。');
+    const original = await readFile(credentialsPath, 'utf8');
+    const saved = JSON.parse(original), claims = saved.members;
+    if (!Array.isArray(claims) || claims.some(row => !exactObject(row, ['memberKey', 'name', 'accessCode'])
+      || typeof row.accessCode !== 'string' || !accessCodePattern.test(row.accessCode))) throw new Error('原私有领取文件格式无效。');
+    validateRoster(claims.map(({ memberKey, name }) => ({ memberKey, name })));
+    return { credentialsPath, original, claims, credentialType: saved.credentialType };
+  }
+  function matchClaims(claims) {
+    const revision = db.prepare('SELECT roster_hash FROM settings WHERE id=1').get()?.roster_hash;
+    if (!revision || rosterRevision(claims) !== revision) throw new Error('原领取文件与账本名单不一致。');
+    const mapped = claims.map(row => {
+      const member = db.prepare('SELECT id,name FROM members WHERE code_hash=?').get(digest(row.accessCode));
+      if (!member || member.name !== row.name) throw new Error('领取文件无法准确定位原账户，未改动任何账户。');
+      return { id: member.id, ...row };
+    });
+    if (new Set(mapped.map(row => row.id)).size !== MEMBER_COUNT) throw new Error('原账户映射不唯一。');
+    return mapped;
+  }
   try {
     const verify = () => {
       if (db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw new Error('Invalid private ledger integrity');
@@ -193,22 +218,12 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
       validateRoster(rows.map(({ memberKey, name }) => ({ memberKey, name })));
       const revision = db.prepare('SELECT roster_hash FROM settings WHERE id=1').get().roster_hash;
       if (rosterRevision(rows) !== revision) throw new Error('学号映射与原35人姓名及成员标识不完全匹配。');
-      const credentialsPath = resolve(directory, 'private-claim-codes.json');
-      const info = await lstat(credentialsPath);
-      if (!info.isFile() || info.isSymbolicLink() || info.size > 32768) throw new Error('原私有领取文件不可用。');
-      const original = await readFile(credentialsPath, 'utf8');
-      const claims = JSON.parse(original).members;
-      if (!Array.isArray(claims) || claims.some(row => !exactObject(row, ['memberKey', 'name', 'accessCode'])
-        || typeof row.accessCode !== 'string' || !accessCodePattern.test(row.accessCode))) throw new Error('原私有领取文件格式无效。');
-      validateRoster(claims.map(({ memberKey, name }) => ({ memberKey, name })));
-      if (rosterRevision(claims) !== revision) throw new Error('原领取文件与账本名单不一致。');
-      const byKey = new Map(claims.map(row => [row.memberKey, row]));
+      const { credentialsPath, original, claims } = await readPrivateClaims();
+      const byKey = new Map(matchClaims(claims).map(row => [row.memberKey, row]));
       const mappings = rows.map(row => {
         const previous = byKey.get(row.memberKey);
-        const member = previous && previous.name === row.name
-          ? db.prepare('SELECT id,name FROM members WHERE code_hash=?').get(digest(previous.accessCode)) : null;
-        if (!member || member.name !== row.name) throw new Error('领取文件无法准确定位原账户，未改动任何账户。');
-        return { id: member.id, ...row };
+        if (!previous || previous.name !== row.name) throw new Error('领取文件无法准确定位原账户，未改动任何账户。');
+        return { id: previous.id, ...row };
       });
       if (new Set(mappings.map(row => row.id)).size !== MEMBER_COUNT) throw new Error('原账户映射不唯一。');
       const suffix = randomUUID();
@@ -266,6 +281,7 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
         // Bound saved sessions and rotate old logins for this member only.
         db.prepare('DELETE FROM sessions WHERE member_id=?').run(member.id);
         db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(digest(token), member.id, Date.now() + SESSION_MS);
+        db.prepare('INSERT INTO login_events(member_id,logged_at) VALUES(?,?)').run(member.id, Date.now());
       });
       return { token, memberId: member.id };
     },
@@ -325,6 +341,42 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
       const totals = db.prepare('SELECT count(*) AS members,COALESCE(sum(budget),0) AS allocatedMicros,COALESCE(sum(spent),0) AS spentMicros,COALESCE(sum(reserved),0) AS reservedMicros FROM members').get();
       const held = db.prepare("SELECT id AS requestId,status,reservation AS reservedMicros,observed_charge AS observedActualMicros,provider_id AS providerId,note FROM requests WHERE status IN ('reserved','held') ORDER BY created_at").all();
       return { configured: configured(), halted: this.halted(), totalBudgetMicros: TOTAL_BUDGET_MICROS, unallocatedMicros: TOTAL_BUDGET_MICROS - totals.allocatedMicros, ...totals, held };
+    },
+    async writeUsageReport() {
+      const { claims, credentialType } = await readPrivateClaims();
+      if (credentialType !== 'studentId' || claims.some(row => !/^[0-9]{11}$/.test(row.accessCode))) throw new Error('报告需要已经迁移并准确匹配的学号领取文件。');
+      let report;
+      db.exec('BEGIN');
+      try {
+        const mapped = matchClaims(claims);
+        const started = Number(db.prepare("SELECT value FROM runtime_flags WHERE key='login_audit_started_at'").get()?.value);
+        if (!Number.isSafeInteger(started) || started < 1) throw new Error('登录审计尚未初始化，请先升级服务。');
+        const logins = db.prepare('SELECT member_id,count(*) AS count,max(logged_at) AS latest FROM login_events GROUP BY member_id').all();
+        const requests = db.prepare('SELECT id,member_id,model_key,status,charged,reservation,observed_charge,created_at,updated_at FROM requests ORDER BY created_at,id').all();
+        const members = mapped.map(({ id, memberKey, name, accessCode }) => {
+          const events = logins.find(row => row.member_id === id);
+          const usage = requests.filter(row => row.member_id === id);
+          return { memberKey, name, studentId: accessCode, loginCount: events?.count ?? 0,
+            lastLoginAt: events ? new Date(events.latest).toISOString() : null,
+            requestCount: usage.length, lastUseAt: usage.length ? new Date(usage.at(-1).created_at).toISOString() : null,
+            ...memberDto(id), requests: usage.map(row => ({ requestId: row.id, modelKey: row.model_key, status: row.status,
+              chargedMicros: row.charged, reservedMicros: ['reserved', 'held'].includes(row.status) ? row.reservation : 0,
+              observedActualMicros: row.observed_charge, createdAt: new Date(row.created_at).toISOString(), updatedAt: new Date(row.updated_at).toISOString() })) };
+        });
+        report = { schemaVersion: 1, generatedAt: new Date().toISOString(), loginAuditStartedAt: new Date(started).toISOString(),
+          totals: { members: members.length, loggedInMembers: members.filter(row => row.loginCount > 0).length,
+            usingMembers: members.filter(row => row.requestCount > 0).length, loginCount: logins.reduce((sum, row) => sum + row.count, 0), requestCount: requests.length,
+            spentMicros: members.reduce((sum, row) => sum + row.spentMicros, 0), reservedMicros: members.reduce((sum, row) => sum + row.reservedMicros, 0) }, members };
+        db.exec('COMMIT');
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+      const path = resolve(directory, 'usage-report.json');
+      const temporary = resolve(directory, `.usage-report-${randomUUID()}.json`);
+      const handle = await open(temporary, 'wx', 0o600);
+      try {
+        try { await handle.writeFile(JSON.stringify(report, null, 2)); await handle.sync(); } finally { await handle.close(); }
+        renameSync(temporary, path);
+      } finally { await unlink(temporary).catch(() => {}); }
+      return { path, members: MEMBER_COUNT };
     },
   };
 }
