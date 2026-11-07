@@ -57,12 +57,14 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
     return { configured: store.configured(), authenticated: Boolean(member), enabled, ...(reason ? { reason } : {}), ...(member ? { member } : {}),
       models: config.models.map(model => {
         const estimate = costMicros(model.prices, 1000, 0, 500);
-        const affordable = !member || member.remainingMicros >= costMicros(model.prices, 1, 0, model.maxOutputTokens);
-        const modelReason = !model.enabled ? '此模型已停用。' : reason || (!affordable ? '余额不足以预留此模型的输出上限。' : null);
+        const quota = store.modelQuota(memberId, model.key);
+        const affordable = !member || quota.remainingMicros >= costMicros(model.prices, 1, 0, model.maxOutputTokens);
+        const modelReason = !model.enabled ? '此模型已停用。' : reason || (!affordable
+          ? model.key === 'astra' ? 'Astra终身子额度或总余额不足以预留输出上限，可选择其它模型。' : '余额不足以预留此模型的输出上限。' : null);
         return { key: model.key, label: model.label, available: enabled && model.enabled && affordable,
           ...(modelReason ? { reason: modelReason } : {}), inputPerMillion: model.inputPerMillion,
           cachedInputPerMillion: model.cachedInputPerMillion, outputPerMillion: model.outputPerMillion,
-          maxOutputTokens: model.maxOutputTokens, estimatedMessages: member ? Math.floor(member.remainingMicros / estimate) : 0 };
+          maxOutputTokens: model.maxOutputTokens, ...quota, estimatedMessages: member ? Math.floor(quota.remainingMicros / estimate) : 0 };
       }), estimatedInputTokens: 1000, estimatedOutputTokens: 500 };
   }
   const result = (memberId, row) => ({ ...session(memberId), requestId: row.id, answer: row.answer || '该请求已由站长依据上游账单核对。', status: row.status, chargedMicros: row.charged });

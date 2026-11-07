@@ -4,7 +4,7 @@ import { chmod, lstat, mkdir, open, readFile, realpath, unlink, writeFile } from
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { secureDirectory } from './local-secrets.mjs';
-import { MEMBER_BUDGET_MICROS, MEMBER_COUNT, SESSION_MS, TOTAL_BUDGET_MICROS, assistantError, exactObject } from './class-assistant-config.mjs';
+import { ASTRA_MEMBER_BUDGET_MICROS, MEMBER_BUDGET_MICROS, MEMBER_COUNT, SESSION_MS, TOTAL_BUDGET_MICROS, assistantError, exactObject } from './class-assistant-config.mjs';
 
 export const PRIVATE_ROOT = fileURLToPath(new URL('../.sites-runtime/class-assistant/', import.meta.url));
 export const digest = value => createHash('sha256').update(value).digest('hex');
@@ -141,6 +141,16 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
     configured,
     halted() { return Boolean(db.prepare("SELECT 1 FROM runtime_flags WHERE key='billing_halt'").get()); },
     member: memberDto,
+    modelQuota(memberId, modelKey) {
+      const budgetMicros = modelKey === 'astra' ? ASTRA_MEMBER_BUDGET_MICROS : null;
+      const member = memberDto(memberId);
+      if (!member) return { budgetMicros, remainingMicros: null };
+      if (budgetMicros === null) return { budgetMicros, remainingMicros: member.remainingMicros };
+      // Count old settled charges and unresolved reservations; introducing a subcap never resets prior usage.
+      const used = db.prepare(`SELECT COALESCE(sum(CASE WHEN status IN ('completed','reconciled') THEN charged ELSE reservation END),0) AS micros
+        FROM requests WHERE member_id=? AND model_key='astra'`).get(memberId).micros;
+      return { budgetMicros, remainingMicros: Math.min(member.remainingMicros, Math.max(0, budgetMicros - used)) };
+    },
     blocked(id) { return Boolean(db.prepare("SELECT 1 FROM requests WHERE member_id=? AND status IN ('reserved','held') LIMIT 1").get(id)); },
     request(id, memberId, fingerprint) {
       const row = db.prepare('SELECT * FROM requests WHERE id=?').get(id);
@@ -203,6 +213,7 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
         if (!member) throw assistantError(401, 'authentication_required', '请先使用本人访问码登录。');
         if (this.blocked(memberId)) throw assistantError(423, 'account_held', '上次请求尚待站长核对，暂不能继续消费。');
         if (member.budget - member.spent - member.reserved < reservation) throw assistantError(402, 'insufficient_balance', '余额不足以预留本次请求的最高费用。');
+        if (model.key === 'astra' && this.modelQuota(memberId, model.key).remainingMicros < reservation) throw assistantError(402, 'model_quota_exceeded', 'GPT-6 Astra的个人终身子额度不足以预留本次请求；仍可使用其它模型的剩余总额度。');
         db.prepare('UPDATE members SET reserved=reserved+? WHERE id=?').run(reservation, memberId);
         db.prepare("INSERT INTO requests(id,member_id,fingerprint,model_key,model_id,prices,counted_input,max_output,reservation,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'reserved',?,?)")
           .run(requestId, memberId, fingerprint, model.key, model.apiModel, JSON.stringify(model.prices), inputTokens, model.maxOutputTokens, reservation, Date.now(), Date.now());

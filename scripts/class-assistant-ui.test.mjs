@@ -4,7 +4,7 @@ import http from 'node:http';
 import { mkdir, readFile, stat } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { chromium } from 'playwright-core';
-import { MODEL_CATALOG, costMicros } from './class-assistant-config.mjs';
+import { MODEL_CATALOG, ASTRA_MEMBER_BUDGET_MICROS, costMicros } from './class-assistant-config.mjs';
 
 test('班级助手的登录、额度、提问和异常状态', async t => {
   const root = resolve(process.env.CLASS_ASSISTANT_UI_ROOT || 'out');
@@ -27,7 +27,8 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   const remainingMicros = 2141857;
   const models = () => MODEL_CATALOG.map(model => {
     const prices = { input: Math.round(model.inputPerMillion * 1_000_000), cached: Math.round(model.cachedInputPerMillion * 1_000_000), output: Math.round(model.outputPerMillion * 1_000_000) };
-    return { ...model, available: enabled, reason: enabled ? undefined : '付费发送暂未开放', maxOutputTokens: 1024, estimatedMessages: authenticated ? Math.floor(remainingMicros / costMicros(prices, 1000, 0, 500)) : null };
+    const modelRemaining = model.key === 'astra' ? Math.min(remainingMicros, ASTRA_MEMBER_BUDGET_MICROS) : remainingMicros;
+    return { ...model, available: enabled, reason: enabled ? undefined : '付费发送暂未开放', maxOutputTokens: 1024, budgetMicros: authenticated && model.key === 'astra' ? ASTRA_MEMBER_BUDGET_MICROS : null, remainingMicros: authenticated ? modelRemaining : null, estimatedMessages: authenticated ? Math.floor(modelRemaining / costMicros(prices, 1000, 0, 500)) : null };
   });
   const session = () => ({ configured: true, authenticated, enabled, reason: enabled ? undefined : '付费发送暂未开放', member: authenticated ? { name: '测试同学', budgetMicros: 2142857, spentMicros: 1000, reservedMicros: 0, remainingMicros } : undefined, models: models(), estimatedInputTokens: 1000, estimatedOutputTokens: 500 });
   await page.route('**/api/class-assistant/**', async route => {
@@ -54,8 +55,9 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   await page.getByRole('button', { name: '进入助手' }).click();
   await page.getByRole('heading', { name: '你好，测试同学' }).waitFor();
   assert.equal(await page.locator('.ca-model').count(), 4);
-  for (const count of [61, 305, 611, 6119]) await page.getByText(`约 ${count} 次 · 按当前余额估算`).waitFor();
+  for (const count of [30, 305, 611, 6119]) await page.getByText(`约 ${count} 次 · 按当前余额估算`).waitFor();
   assert.equal(await page.getByText('暂不可用', { exact: true }).count(), 4);
+  await page.getByText('专属上限 $1.071428 · 可用 $1.071428（包含在总额度内）').waitFor();
   await page.getByText('$2.142857').waitFor();
   await page.locator('.ca-chat').getByText('付费发送暂未开放').waitFor();
   assert.equal(await page.getByRole('button', { name: '发送问题' }).isDisabled(), true);

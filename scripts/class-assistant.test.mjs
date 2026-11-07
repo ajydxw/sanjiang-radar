@@ -7,8 +7,8 @@ import { resolve } from 'node:path';
 import { once } from 'node:events';
 import { DatabaseSync } from 'node:sqlite';
 import { Readable } from 'node:stream';
-import { defaultConfig, validateConfig, costMicros, MEMBER_BUDGET_MICROS, MODEL_CATALOG, SESSION_MS } from './class-assistant-config.mjs';
-import { acquireClassAssistantLock, createClassAssistantStore, PRIVATE_ROOT, privatePath, protectPrivateDirectory, validateRoster, digest } from './class-assistant-store.mjs';
+import { defaultConfig, validateConfig, costMicros, ASTRA_MEMBER_BUDGET_MICROS, MEMBER_BUDGET_MICROS, MODEL_CATALOG, SESSION_MS } from './class-assistant-config.mjs';
+import { acquireClassAssistantLock, createClassAssistantStore, PRIVATE_ROOT, privatePath, validateRoster, digest } from './class-assistant-store.mjs';
 import { createClassAssistantProvider, questionPayload, validatedUsage } from './class-assistant-provider.mjs';
 import { createClassAssistantHandler, validatePublicOrigin } from './class-assistant.mjs';
 import { createRadarServer } from './serve-radar.mjs';
@@ -33,7 +33,7 @@ function upstream({ generate = () => json(response()), count = 1000, countFails 
   return { fetchImpl, calls, paid: () => calls.filter(call => call.url.endsWith('/responses')).length };
 }
 async function fixture(t, options = {}) {
-  await protectPrivateDirectory(PRIVATE_ROOT);
+  await mkdir(PRIVATE_ROOT, { recursive: true, mode: 0o700 });
   const directory = await mkdtemp(resolve(PRIVATE_ROOT, 'test-'));
   let store = await createClassAssistantStore({ directory });
   if (options.initialized !== false) await store.initialize(rows());
@@ -244,6 +244,80 @@ test('SQLite事务与全班35份额度严格限制；低余额在付费前拒绝
   await f.restart();
   assert.equal(f.store.audit().spentMicros, MEMBER_BUDGET_MICROS);
   assert.equal(f.store.audit().allocatedMicros, 74_999_995);
+});
+
+test('仅Astra新增终身子额度，初始四模型估算30/306/612/6122且总余额不变', async t => {
+  const f = await fixture(t);
+  const anonymous = await f.request('session');
+  assert.equal(anonymous.body.models[0].budgetMicros, ASTRA_MEMBER_BUDGET_MICROS);
+  assert.ok(anonymous.body.models.every(model => model.remainingMicros === null));
+  const logged = await f.login();
+  assert.equal(logged.body.member.budgetMicros, MEMBER_BUDGET_MICROS);
+  assert.equal(logged.body.member.remainingMicros, MEMBER_BUDGET_MICROS);
+  assert.deepEqual(logged.body.models.map(model => model.estimatedMessages), [30, 306, 612, 6122]);
+  assert.deepEqual(logged.body.models.map(model => model.budgetMicros), [ASTRA_MEMBER_BUDGET_MICROS, null, null, null]);
+  assert.deepEqual(logged.body.models.map(model => model.remainingMicros), [ASTRA_MEMBER_BUDGET_MICROS, MEMBER_BUDGET_MICROS, MEMBER_BUDGET_MICROS, MEMBER_BUDGET_MICROS]);
+});
+
+test('Astra子额度按已结算实际费与未决预占扣除，重启/核对/重放不绕限；耗尽后Sol仍可使用总余额', async t => {
+  const f = await fixture(t);
+  const logged = await f.login();
+  const memberId = f.store.authenticate(logged.cookie.split('=')[1]);
+  const astra = config().models[0];
+  const reserveAstra = (reservation, requestId = randomUUID()) => f.store.reserve({ memberId, requestId, fingerprint: digest(requestId), model: astra, inputTokens: 1000, reservation });
+  const first = reserveAstra(600000).request;
+  f.store.settle(first.id, { chargedMicros: 500000, answer: '合成Astra结算', usage: {}, providerId: 'resp_astra_first' });
+  assert.equal(f.store.modelQuota(memberId, 'astra').remainingMicros, ASTRA_MEMBER_BUDGET_MICROS - 500000);
+  const held = reserveAstra(200000).request;
+  const beforeRestart = ASTRA_MEMBER_BUDGET_MICROS - 700000;
+  assert.equal(f.store.modelQuota(memberId, 'astra').remainingMicros, beforeRestart);
+  assert.equal(reserveAstra(200000, held.id).created, false);
+  assert.equal(f.store.modelQuota(memberId, 'astra').remainingMicros, beforeRestart);
+  await f.restart();
+  assert.equal(f.store.modelQuota(memberId, 'astra').remainingMicros, beforeRestart);
+  assert.throws(() => reserveAstra(1), error => error.code === 'account_held');
+  f.store.reconcile(held.id, 100000, '站长已人工核对合成Astra上游账单，该冻结请求实际费用为十万微美元。');
+  const remaining = ASTRA_MEMBER_BUDGET_MICROS - 600000;
+  assert.equal(f.store.modelQuota(memberId, 'astra').remainingMicros, remaining);
+  assert.throws(() => reserveAstra(remaining + 1), error => error.code === 'model_quota_exceeded');
+  const last = reserveAstra(remaining).request;
+  f.store.settle(last.id, { chargedMicros: remaining, answer: '合成Astra额度耗尽', usage: {}, providerId: 'resp_astra_last' });
+  await f.restart();
+  const session = await f.request('session', undefined, logged.cookie);
+  assert.equal(session.body.models[0].remainingMicros, 0);
+  assert.equal(session.body.models[0].estimatedMessages, 0);
+  assert.equal(session.body.models[0].available, false);
+  assert.equal(session.body.models[1].available, true);
+  assert.equal(session.body.models[1].remainingMicros, MEMBER_BUDGET_MICROS - ASTRA_MEMBER_BUDGET_MICROS);
+  const denied = await f.request('chat', { ...question(), modelKey: 'astra' }, logged.cookie);
+  assert.equal(denied.status, 402);
+  assert.equal(denied.body.code, 'model_quota_exceeded');
+  assert.equal(f.mock.paid(), 0);
+  const sol = await f.request('chat', question(), logged.cookie);
+  assert.equal(sol.status, 200);
+  assert.equal(sol.body.chargedMicros, 2620);
+  assert.equal(sol.body.models[0].remainingMicros, 0);
+  assert.equal(sol.body.member.remainingMicros, MEMBER_BUDGET_MICROS - ASTRA_MEMBER_BUDGET_MICROS - 2620);
+});
+
+test('既有账本的旧Astra费用纳入新子额度，超出新限额按零可用处理；总余额仍是所有模型共同上限', async t => {
+  const f = await fixture(t);
+  const { memberId } = f.store.login(f.credentials[0].accessCode);
+  const previousCharge = ASTRA_MEMBER_BUDGET_MICROS + 1;
+  const legacy = reserve(f.store, memberId, previousCharge);
+  f.store.settle(legacy.id, { chargedMicros: previousCharge, answer: '模拟旧版已结算请求', usage: {}, providerId: 'resp_legacy' });
+  // Simulate a pre-subcap Astra ledger entry without migrating or changing any member balance.
+  const database = new DatabaseSync(resolve(f.directory, 'ledger.sqlite'));
+  database.prepare("UPDATE requests SET model_key='astra',model_id='gpt-6-astra' WHERE id=?").run(legacy.id);
+  database.close();
+  await f.restart();
+  assert.equal(f.store.modelQuota(memberId, 'astra').remainingMicros, 0);
+  assert.equal(f.store.modelQuota(memberId, 'sol').remainingMicros, MEMBER_BUDGET_MICROS - previousCharge);
+  const other = f.store.login(f.credentials[1].accessCode).memberId;
+  const solCharge = 1500000;
+  const sol = reserve(f.store, other, solCharge);
+  f.store.settle(sol.id, { chargedMicros: solCharge, answer: '合成Sol费用', usage: {}, providerId: 'resp_sol' });
+  assert.equal(f.store.modelQuota(other, 'astra').remainingMicros, MEMBER_BUDGET_MICROS - solCharge);
 });
 
 test('模型/count不确认或输入>8000时不做付费请求，不预占；筛选也不计费', async t => {
