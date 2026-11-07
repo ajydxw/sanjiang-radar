@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-30T04:52:01.057Z",
+  "generatedAt": "2026-11-07T00:42:34.140Z",
   "items": [
     {
       "id": "wechat-a88c5e10690ab5eb",
@@ -30,12 +30,13 @@
       "name": "三江学院官方公众号",
       "sourceType": "wechat",
       "url": "https://mp.weixin.qq.com/s/sBoNCxZrHiMCy30i9emGcg",
-      "state": "ok",
+      "state": "failed",
       "count": 1,
       "lastSuccessAt": "2026-10-30T04:52:26.130Z",
       "note": "文章链接导入已接通；仅保留有用的信息摘要与原文链接。自动发现新推文尚未配置。",
-      "error": null,
-      "discoveryMode": "article-links"
+      "error": "公开文章当前无法读取，保留上次成功快照。",
+      "discoveryMode": "article-links",
+      "lastAttemptAt": "2026-11-07T00:42:34.140Z"
     }
   ]
 }

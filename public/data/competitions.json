@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-06T00:14:43.386Z",
+  "generatedAt": "2026-11-07T00:44:59.579Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -33,7 +33,7 @@
           "url": "https://www.cms.org.cn/upload/file/20260702/1782964399222501.pdf"
         }
       ],
-      "fetchedAt": "2026-11-06T00:13:43.471Z",
+      "fetchedAt": "2026-11-07T00:43:17.747Z",
       "firstSeenAt": "2026-10-10T04:49:20.653Z",
       "registrationDeadline": "2026-10-19"
     },
@@ -63,7 +63,7 @@
         "赛将于10月21~22日在四川成都举办，报名时间为2026年9月9日-10月11日。 中国计算机学会大学生"
       ],
       "attachments": [],
-      "fetchedAt": "2026-11-06T00:11:02.970Z",
+      "fetchedAt": "2026-11-07T00:43:22.874Z",
       "firstSeenAt": "2026-10-10T04:49:21.882Z"
     },
     {
@@ -92,7 +92,7 @@
         "职业院校组或自行选择任意组别 报名时间 报名时间：2026年10月8日10:00—2026年12月18日14:00 报名须知 人数及方式"
       ],
       "attachments": [],
-      "fetchedAt": "2026-11-06T00:11:09.936Z",
+      "fetchedAt": "2026-11-07T00:43:29.190Z",
       "firstSeenAt": "2026-10-10T04:49:25.064Z"
     },
     {
@@ -187,7 +187,7 @@
       "sourceType": "competition",
       "state": "partial",
       "count": 1,
-      "lastSuccessAt": "2026-11-06T00:13:43.471Z",
+      "lastSuccessAt": "2026-11-07T00:43:17.747Z",
       "note": "本次仅核验原官方 PDF，未成功检查栏目新通知；全国报名已截止，三江校内安排另行核实。",
       "error": "栏目与通知详情页返回 HTTP 404；原官方 PDF 可读取，已核验其中的报名要求及初赛安排。"
     },
@@ -198,7 +198,7 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-06T00:11:05.351Z",
+      "lastSuccessAt": "2026-11-07T00:43:25.083Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
       "error": null
     },
@@ -209,7 +209,7 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-06T00:11:09.943Z",
+      "lastSuccessAt": "2026-11-07T00:43:29.190Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
       "error": null
     },
@@ -221,8 +221,8 @@
       "state": "failed",
       "count": 1,
       "lastSuccessAt": "2026-10-29T10:07:34.879Z",
-      "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
-      "error": "browserType.launch: Chromium distribution 'msedge' is not found at /opt/microsoft/msedge/msedge\nRun \"npx playwright install msedge\""
+      "note": "更新失败时保留上次成功的数据。",
+      "error": "动态正文未能读取：浏览器运行环境受限；保留上次成功数据。"
     },
     {
       "id": "competition-english",
@@ -232,8 +232,8 @@
       "state": "failed",
       "count": 1,
       "lastSuccessAt": "2026-10-23T09:55:37.279Z",
-      "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
-      "error": "browserType.launch: Chromium distribution 'msedge' is not found at /opt/microsoft/msedge/msedge\nRun \"npx playwright install msedge\""
+      "note": "更新失败时保留上次成功的数据。",
+      "error": "动态正文未能读取：浏览器运行环境受限；保留上次成功数据。"
     },
     {
       "id": "competition-sanchuang",
@@ -243,8 +243,8 @@
       "state": "failed",
       "count": 1,
       "lastSuccessAt": "2026-10-29T10:08:07.143Z",
-      "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
-      "error": "browserType.launch: Chromium distribution 'msedge' is not found at /opt/microsoft/msedge/msedge\nRun \"npx playwright install msedge\""
+      "note": "更新失败时保留上次成功的数据。",
+      "error": "动态正文未能读取：浏览器运行环境受限；保留上次成功数据。"
     }
   ]
 }
