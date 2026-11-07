@@ -1,0 +1,14 @@
+{
+  "enabled": false,
+  "provider": "openai-responses",
+  "baseUrl": "https://api.openai.com/v1",
+  "apiKeyEnv": "CLASS_ASSISTANT_OPENAI_API_KEY",
+  "pricingConfirmed": false,
+  "pricingVerifiedAt": "2026-11-07",
+  "models": [
+    { "key": "astra", "label": "GPT-6 Astra", "apiModel": "gpt-6-astra", "inputPerMillion": 10, "cachedInputPerMillion": 1, "outputPerMillion": 50, "enabled": true, "maxOutputTokens": 1024 },
+    { "key": "sol", "label": "GPT-6.1 Sol", "apiModel": "gpt-6.1-sol", "inputPerMillion": 2, "cachedInputPerMillion": 0.1, "outputPerMillion": 10, "enabled": true, "maxOutputTokens": 1024 },
+    { "key": "terra", "label": "GPT-6.1 Terra", "apiModel": "gpt-6.1-terra", "inputPerMillion": 1, "cachedInputPerMillion": 0.05, "outputPerMillion": 5, "enabled": true, "maxOutputTokens": 1024 },
+    { "key": "luna", "label": "GPT-6 Luna", "apiModel": "gpt-6-luna", "inputPerMillion": 0.1, "cachedInputPerMillion": 0.01, "outputPerMillion": 0.5, "enabled": true, "maxOutputTokens": 1024 }
+  ]
+}

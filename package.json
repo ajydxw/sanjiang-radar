@@ -31,7 +31,12 @@
     "test:pages": "node --test scripts/pages.test.mjs",
     "test:welcome": "node --test src/lib/welcome.test.mjs",
     "test:identity": "node --test scripts/identity-auth.test.mjs",
-    "test:identity-ui": "node --test scripts/identity-ui.test.mjs"
+    "test:identity-ui": "node --test scripts/identity-ui.test.mjs",
+    "build:class-assistant": "node scripts/build-class-assistant.mjs",
+    "serve:class-assistant": "node scripts/serve-class-assistant.mjs",
+    "class-assistant:admin": "node scripts/class-assistant-cli.mjs",
+    "test:class-assistant": "node --test scripts/class-assistant.test.mjs",
+    "test:class-assistant-ui": "node --test scripts/class-assistant-ui.test.mjs"
   },
   "dependencies": {
     "helmet": "8.3.0",
@@ -55,6 +60,6 @@
     "url": "https://github.com/ajydxw/sanjiang-radar.git"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=24.16.0"
   }
 }

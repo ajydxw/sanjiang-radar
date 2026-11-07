@@ -15,6 +15,12 @@
 
 当前发布的是纯静态信息版，不提供共享点赞、班级抽奖、管理员登录或 AI 在线答复。仓库保留的服务端模块和旧版功能说明供开发参考，不代表 Pages 正在运行这些接口。
 
+## 班级生活助手框架
+
+本分支新增35人专属访问码、独立额度账本和四模型问答界面。总预算75美元，每人$2.142857，切换模型共享个人余额；API未配置时禁止付费调用。仅本机框架，尚未接入或启用正式网站的AI服务。
+
+使用 `npm run build:class-assistant` 构建，再运行 `node --env-file=.sites-runtime/class-assistant/api.env scripts/serve-class-assistant.mjs`，访问 `http://127.0.0.1:4314/assistant/`。首次初始化、模型价格、测试和之后接入API的步骤见[班级助手说明](docs/class-assistant.md)。`.sites-runtime/` 中的成员、领取凭证、API密钥和费用数据库仅留本机，不能发布。
+
 ## 本地运行
 
 使用 Node.js 24：

@@ -58,15 +58,17 @@ export async function createRadarServer({
   likesStore,
   identityAuth,
   identityOnly = false,
+  classAssistantHandler,
 } = {}) {
   if (typeof identityOnly !== "boolean") throw new Error("Invalid identity-only mode");
+  if (classAssistantHandler !== undefined && typeof classAssistantHandler !== "function") throw new Error("Invalid class assistant handler");
   root = await realpath(root);
   if (!identityOnly) {
     assistantStore ??= await createAssistantStore();
     adminAuth ??= await createAdminAuth();
     likesStore ??= await createLikeStore();
   }
-  identityAuth ??= await createIdentityAuth();
+  if (!identityOnly || !classAssistantHandler) identityAuth ??= await createIdentityAuth();
   const budget = {
     requestsPerMinute: 1200,
     burst: 300,
@@ -140,10 +142,12 @@ export async function createRadarServer({
         reject(403, "blocked_path");
         return;
       }
+      if (classAssistantHandler && await classAssistantHandler(req, res)) return;
+      if (identityOnly && classAssistantHandler && (pathname === "/api" || pathname.startsWith("/api/"))) { reject(404); return; }
       if (identityOnly && (pathname === "/api" || pathname.startsWith("/api/"))
         && (!["/api/identity/session", "/api/identity/confirm", "/api/identity/logout"].includes(pathname)
           || req.url.split("?")[0] !== pathname)) { reject(404); return; }
-      if (await handleIdentityRequest(req, res, identityAuth)) return;
+      if (identityAuth && await handleIdentityRequest(req, res, identityAuth)) return;
       if (!identityOnly) {
         if (await handleAdminRequest(req, res, { auth: adminAuth, store: assistantStore })) return;
         if (await handleAssistantRequest(req, res, assistantStore)) return;
