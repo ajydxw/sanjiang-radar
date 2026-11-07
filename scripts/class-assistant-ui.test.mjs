@@ -46,6 +46,7 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
       chats++;
       const body = route.request().postDataJSON();
       assert.match(body.requestId, /^[0-9a-f-]{36}$/i);
+      assert.equal(body.modelKey, 'sol');
       if (networkFailure) await route.abort('failed');
       else await route.fulfill({ json: { answer: '这是一条合成测试回答。', status: 'completed', chargedMicros: 1234 } });
     } else await route.fulfill({ status: 404, json: { error: 'unknown mock', code: 'unknown' } });
@@ -55,9 +56,12 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   await page.getByRole('button', { name: '进入助手' }).click();
   await page.getByRole('heading', { name: '你好，测试同学' }).waitFor();
   assert.equal(await page.locator('.ca-model').count(), 4);
-  for (const count of [30, 305, 611, 6119]) await page.getByText(`约 ${count} 次 · 按当前余额估算`).waitFor();
+  assert.deepEqual(await page.locator('.ca-model strong').allTextContents(), ['GPT-6 Luna', 'GPT-6.1 Terra', 'GPT-6.1 Sol', 'GPT-6 Astra']);
+  await page.getByText('日常问答推荐').waitFor();
+  await page.getByText('日常问题先用 Luna，更省额度').waitFor();
+  for (const count of [10, 305, 611, 6119]) await page.getByText(`约 ${count} 次 · 按当前余额估算`).waitFor();
   assert.equal(await page.getByText('暂不可用', { exact: true }).count(), 4);
-  await page.getByText('专属上限 $1.071428 · 可用 $1.071428（包含在总额度内）').waitFor();
+  await page.getByText('专属上限 $0.350000 · 可用 $0.350000（包含在总额度内）').waitFor();
   await page.getByText('$2.142857').waitFor();
   await page.locator('.ca-chat').getByText('付费发送暂未开放').waitFor();
   assert.equal(await page.getByRole('button', { name: '发送问题' }).isDisabled(), true);
@@ -66,6 +70,15 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   await page.screenshot({ path: 'artifacts/class-assistant-preview.png', fullPage: true });
   enabled = true;
   await page.getByRole('button', { name: '刷新余额' }).click();
+  const luna = page.locator('.ca-model').filter({ hasText: 'GPT-6 Luna' });
+  const sol = page.locator('.ca-model').filter({ hasText: 'GPT-6.1 Sol' });
+  await luna.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => [...document.querySelectorAll('.ca-model')].some(el => el.textContent.includes('GPT-6 Luna') && el.getAttribute('aria-pressed') === 'true'));
+  await sol.click();
+  assert.equal(await sol.getAttribute('aria-pressed'), 'true');
+  await page.getByRole('button', { name: '刷新余额' }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll('.ca-model')].some(el => el.textContent.includes('GPT-6.1 Sol') && el.getAttribute('aria-pressed') === 'true'));
+  assert.equal(await sol.getAttribute('aria-pressed'), 'true');
   await page.getByLabel('你的问题').fill('合成测试问题');
   await page.getByRole('button', { name: '发送问题' }).click();
   await page.getByText('这是一条合成测试回答。').waitFor();

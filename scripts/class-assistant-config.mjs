@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 export const MEMBER_COUNT = 35;
 export const TOTAL_BUDGET_MICROS = 75_000_000;
 export const MEMBER_BUDGET_MICROS = 2_142_857;
-export const ASTRA_MEMBER_BUDGET_MICROS = 1_071_428;
+export const ASTRA_MEMBER_BUDGET_MICROS = 350_000;
 export const UNALLOCATED_MICROS = 5;
 export const MAX_INPUT_TOKENS = 8000;
 export const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
