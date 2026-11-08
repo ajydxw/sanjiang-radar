@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type K
 import { ArrowLeft, ArrowRight, Check, ChevronDown, LockKeyhole, RefreshCw, Sparkles } from "lucide-react";
 import "./class-assistant.css";
 import { assistantGreeting } from "@/lib/welcome";
-import { HISTORY_MAX_TURNS, HISTORY_MAX_CHARS, HISTORY_ASSISTANT_MAX_CHARS, validateConversationHistory, type ConversationEntry } from "../../sources/class-assistant-conversation.mjs";
+import { conversationLimits, trimConversationHistory, validateConversationHistory, type ConversationEntry } from "../../sources/class-assistant-conversation.mjs";
 
 type Model = { key: string; label: string; available: boolean; reason?: string; inputPerMillion: number; cachedInputPerMillion: number; outputPerMillion: number; maxOutputTokens: number; budgetMicros: number | null; remainingMicros: number | null; estimatedMessages: number | null };
 type Session = { contextOwner?: string; configured: boolean; authenticated: boolean; enabled: boolean; reason?: string; member?: { name: string; budgetMicros: number; spentMicros: number; reservedMicros: number; remainingMicros: number }; models: Model[]; estimatedInputTokens: number; estimatedOutputTokens: number };
@@ -86,6 +86,7 @@ export default function ClassAssistant() {
   const [history, setHistory] = useState<ConversationEntry[]>([]);
   const [keepContext, setKeepContext] = useState(true);
   const [historyNotice, setHistoryNotice] = useState("");
+  const [contextTrimmed, setContextTrimmed] = useState(false);
   const [notice, setNotice] = useState("");
   const [originRejected, setOriginRejected] = useState(false);
   const [uncertain, setUncertain] = useState(false);
@@ -93,6 +94,9 @@ export default function ClassAssistant() {
   const thread = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const count = Array.from(question).length;
+  const contextLimits = conversationLimits(selected);
+  const requestHistory = keepContext ? trimConversationHistory(history, selected) : [];
+  const contextChars = requestHistory.reduce((total, entry) => total + Array.from(entry.content).length, 0);
 
   async function refresh() {
     setLoading(true);
@@ -101,13 +105,13 @@ export default function ClassAssistant() {
       setOriginRejected(false);
       const nextOwner = data.authenticated ? data.contextOwner : undefined;
       if (ownerRef.current && ownerRef.current !== nextOwner) {
-        setMessages([]); setHistory([]); setQuestion(""); setHistoryNotice("");
+        setMessages([]); setHistory([]); setContextTrimmed(false); setQuestion(""); setHistoryNotice("");
         setNotice("账号已变化，请重新输入问题。");
       }
       ownerRef.current = nextOwner;
       setSession(data);
       setSelected(current => data.models?.some(model => model.key === current && model.available) ? current : modelOrder.find(key => data.models?.some(model => model.key === key && model.available)) || "");
-      if (!data.authenticated) { setMessages([]); setHistory([]); setHistoryNotice(""); }
+      if (!data.authenticated) { setMessages([]); setHistory([]); setContextTrimmed(false); setHistoryNotice(""); }
       setUncertain(false);
       return true;
     } catch (error) {
@@ -124,13 +128,13 @@ export default function ClassAssistant() {
   async function login(event: FormEvent) {
     event.preventDefault(); if (busy || !accessCode.trim()) return;
     setBusy(true); setNotice("");
-    try { setHistory([]); setHistoryNotice(""); await request("login", { accessCode }); setAccessCode(""); await refresh(); }
+    try { setHistory([]); setContextTrimmed(false); setHistoryNotice(""); await request("login", { accessCode }); setAccessCode(""); await refresh(); }
     catch (error) { setNotice(error instanceof Error ? error.message : "登录失败，请稍后再试。"); }
     finally { setBusy(false); }
   }
   async function logout() {
     if (busy) return; setBusy(true); setNotice("");
-    try { await request("logout", {}); ownerRef.current = undefined; setMessages([]); setHistory([]); setHistoryNotice(""); setQuestion(""); setAccessCode(""); setSelected(""); setSession(null); await refresh(); }
+    try { await request("logout", {}); ownerRef.current = undefined; setMessages([]); setHistory([]); setContextTrimmed(false); setHistoryNotice(""); setQuestion(""); setAccessCode(""); setSelected(""); setSession(null); await refresh(); }
     catch { setNotice("退出状态未确认，请检查网络后重试。"); }
     finally { setBusy(false); }
   }
@@ -143,26 +147,24 @@ export default function ClassAssistant() {
     if (!globalThis.crypto?.randomUUID) { setNotice("当前浏览器无法安全生成请求编号，请使用较新的浏览器。"); return; }
     setBusy(true); setPending(true); setNotice(""); setQuestion(""); setMessages(current => [...current, { role: "user", text: message }]);
     try {
-      const result = await request<{ answer: string; status: string; chargedMicros: number; contextOwner?: string }>("chat", { modelKey: selected, message, requestId: crypto.randomUUID(), contextOwner: requestOwner, history: keepContext ? history : [] });
+      const result = await request<{ answer: string; status: string; chargedMicros: number; contextOwner?: string }>("chat", { modelKey: selected, message, requestId: crypto.randomUUID(), contextOwner: requestOwner, history: requestHistory });
       if (result.contextOwner !== requestOwner || ownerRef.current !== requestOwner) {
-        setMessages([]); setHistory([]); setQuestion(""); setHistoryNotice("");
+        setMessages([]); setHistory([]); setContextTrimmed(false); setQuestion(""); setHistoryNotice("");
         await refresh(); setNotice("账号已变化，请重新输入问题。"); return;
       }
       if (typeof result.answer === "string" && result.answer.trim() && result.status === "completed") {
         setMessages(current => [...current, { role: "assistant", text: result.answer, chargedMicros: result.chargedMicros }]);
         if (keepContext) {
           const pair: ConversationEntry[] = [{ role: "user", content: message }, { role: "assistant", content: result.answer }];
-          const size = (entries: ConversationEntry[]) => entries.reduce((total, entry) => total + Array.from(entry.content).length, 0);
           let validPair = true;
           try { validateConversationHistory(pair); } catch { validPair = false; }
-          if (!validPair || Array.from(result.answer).length > HISTORY_ASSISTANT_MAX_CHARS || size(pair) > HISTORY_MAX_CHARS) {
+          if (!validPair) {
             setHistoryNotice("本轮内容超出上下文限制或含不支持的字符，未加入后续上下文；显示的回答不受影响。");
           } else {
-            setHistory(current => {
-              const next = [...current, ...pair];
-              while (next.length > HISTORY_MAX_TURNS * 2 || size(next) > HISTORY_MAX_CHARS) next.splice(0, 2);
-              return next;
-            });
+            const accumulated = [...history, ...pair];
+            const retained = trimConversationHistory(accumulated, "luna");
+            setHistory(retained);
+            if (retained.length < accumulated.length) setContextTrimmed(true);
             setHistoryNotice("");
           }
         }
@@ -171,10 +173,10 @@ export default function ClassAssistant() {
       await refresh();
     } catch (error) {
       if (error instanceof ApiError && error.code === "context_owner_changed") {
-        setMessages([]); setHistory([]); setQuestion(""); setHistoryNotice("");
+        setMessages([]); setHistory([]); setContextTrimmed(false); setQuestion(""); setHistoryNotice("");
         await refresh(); setNotice("账号已变化，请重新输入问题。");
       } else if (error instanceof ApiError && !error.code.toLowerCase().includes("held")) {
-        if (error.code === "authentication_required") { setHistory([]); setHistoryNotice(""); void refresh(); }
+        if (error.code === "authentication_required") { setHistory([]); setContextTrimmed(false); setHistoryNotice(""); void refresh(); }
         setNotice(error.message);
       } else {
         setUncertain(true);
@@ -198,8 +200,8 @@ export default function ClassAssistant() {
       </section> : <section className="ca-hero"><div><span className="ca-eyebrow">三江雷达 · 班级专属</span><h1>你的 AI 助手<span>，从一个问题开始。</span></h1><p>编程构建、写作、学习与方案分析，都可以从文字提问开始。</p></div><div className="ca-orbit" aria-hidden="true"><i /><Sparkles size={32} /></div></section>}
       {!enabled ? <section className="ca-card ca-empty"><LockKeyhole size={26} /><h2>{externalUrl ? "班级生活助手" : "班级生活助手准备中，等待 API 接入"}</h2><p>{externalUrl ? "班级助手已向本班 35 位同学开放，请使用 11 位学号登录。" : "专属服务接入后，授权学生可使用学号登录。"}</p>{externalUrl && <a className="ca-primary" href={externalUrl}>进入生活助手 <ArrowRight size={16} /></a>}</section> : loading && !session ? <section className="ca-card ca-empty"><span className="ca-loader" aria-hidden="true" />正在读取服务状态…</section> : !session ? <section className="ca-card ca-empty"><p>{notice || "服务暂时无法连接。"}</p>{originRejected && <p><a href="https://ajydxw.github.io/sanjiang-radar/assistant/">进入三江雷达正式网站</a></p>}<button className="ca-secondary" onClick={() => void refresh()}>重新读取</button></section> : !session.configured ? <section className="ca-card ca-empty"><h2>班级生活助手暂不可用</h2><p>{session.reason || "服务正在准备中，请稍后再来。"}</p><button className="ca-secondary" onClick={() => void refresh()} disabled={loading}>刷新状态</button></section> : !member ? <section className="ca-card ca-login"><span className="ca-icon"><LockKeyhole size={21} /></span><h2>欢迎回来</h2><p>班级助手已向本班 35 位同学开放，请使用 11 位学号登录。</p><p>登录时间、模型使用与费用会由班级管理员记录，用于额度管理。</p><form onSubmit={login}><label htmlFor="access-code">学号</label><input id="access-code" type="text" inputMode="numeric" pattern="[0-9]{11}" maxLength={11} autoComplete="off" value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder="请输入 11 位学号" required /><button className="ca-primary" disabled={busy}>{busy ? "正在登录…" : "进入助手"} <ArrowRight size={16} /></button></form>{notice && <p role="alert" className="ca-notice">{notice}</p>}</section> : <>
         <section className="ca-card ca-account"><div className="ca-account-head"><div><span className="ca-eyebrow">MY BALANCE</span><h2>我的额度</h2><p>四种模型共享同一份余额，最终按实际使用量计费。登录时间、模型使用与费用会由班级管理员记录，用于额度管理。</p></div><div className="ca-actions"><button className="ca-secondary" onClick={() => { setNotice(""); void refresh(); }} disabled={loading || busy}><RefreshCw size={15} className={loading ? "ca-spin" : ""} /> 刷新余额</button><button className="ca-link" onClick={() => void logout()} disabled={busy || loading}>退出</button></div></div><div className="ca-meter" aria-hidden="true"><span style={{ width: `${left}%` }} /></div><div className="ca-balance">{[["总额度", member.budgetMicros], ["已使用", member.spentMicros], ["预占中", member.reservedMicros], ["可用余额", member.remainingMicros]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{money(value as number)}</strong></div>)}</div><p className="ca-footnote">班级总额 75 USD / 35 人，约 2.142857 USD / 人；实际额度以账户显示为准。</p></section>
-        <section className="ca-card ca-chat"><div className="ca-heading"><div><span className="ca-eyebrow">ASK ANYTHING</span><h2>说说你的问题</h2></div><div className="ca-context-actions"><button type="button" className="ca-chip" aria-pressed={keepContext} disabled={busy || uncertain} onClick={() => { setKeepContext(value => !value); setHistory([]); setHistoryNotice("已切换，上下文将从下一条开始积累。"); }}>保留上下文：{keepContext ? "开启" : "关闭"}</button><button type="button" className="ca-chip" disabled={busy || uncertain} onClick={() => { setMessages([]); setHistory([]); setNotice(""); setHistoryNotice(""); }}>新对话</button></div></div>
-          <p className="ca-context-note">开启上下文后会发送最近 6 轮（最多 6000 字符）的前文，增加额度消耗、可能变慢，也可能延续前文错误；切换后从下一条开始积累，页面刷新后清空。</p>{historyNotice && <p className="ca-context-note" role="status">{historyNotice}</p>}
+        <section className="ca-card ca-chat"><div className="ca-heading"><div><span className="ca-eyebrow">ASK ANYTHING</span><h2>说说你的问题</h2></div><div className="ca-context-actions"><button type="button" className="ca-chip" aria-pressed={keepContext} disabled={busy || uncertain} onClick={() => { setKeepContext(value => !value); setHistory([]); setContextTrimmed(false); setHistoryNotice("已切换，上下文将从下一条开始积累。"); }}>保留上下文：{keepContext ? "开启" : "关闭"}</button><button type="button" className="ca-chip" disabled={busy || uncertain} onClick={() => { setMessages([]); setHistory([]); setContextTrimmed(false); setNotice(""); setHistoryNotice(""); }}>新对话</button></div></div>
+          <p className="ca-context-note">下一次提问可携带 {requestHistory.length / 2} 轮前文（{contextChars} 字符）；当前模型最多 {contextLimits.maxTurns} 轮问答、{contextLimits.maxChars} 字符。可继续聊天，超出时自动移除最早问答。历史会增加额度消耗、可能变慢，也可能延续前文错误；切换上下文开关后从下一条开始积累，页面刷新后清空。</p>{keepContext && (contextTrimmed || requestHistory.length < history.length) && <p className="ca-context-note" role="status">部分较早问答已移出后续请求的上下文；页面仍显示早期回答，可以继续聊天。切换模型按对应窗口发送，本页最多保留 Luna 的上下文窗口。</p>}{historyNotice && <p className="ca-context-note" role="status">{historyNotice}</p>}
           <div className="ca-thread" ref={thread} aria-live="polite">{messages.length === 0 && !pending ? <div className="ca-starters"><p>不知道从哪开始？点一下填入输入框：</p><div>{starters.map(text => <button key={text} type="button" onClick={() => { setQuestion(text); input.current?.focus(); }}>{text}</button>)}</div></div> : messages.map((message, index) => <div key={index} className={`ca-message ${message.role}`}><strong>{message.role === "user" ? "我" : "生活助手"}{message.role === "assistant" && typeof message.chargedMicros === "number" && ` · 本次费用 ${money(message.chargedMicros)}`}</strong><p>{message.text}</p></div>)}{pending && <div className="ca-typing" role="status"><span aria-hidden="true"><i /><i /><i /></span>正在思考…</div>}</div>
           {!session.enabled && <p className="ca-notice" role="status">{session.reason || "付费发送暂未开放，你仍可查看余额和模型信息。"}</p>}
           <form onSubmit={send} className="ca-composer"><label htmlFor="question" className="ca-visually-hidden">你的问题</label><textarea id="question" ref={input} value={question} onChange={e => setQuestion(e.target.value)} placeholder="比如：如何分析这段代码的问题，或规划一个小项目？" rows={3} /><div className="ca-compose"><ModelPicker models={models} selected={selected} disabled={busy} onSelect={setSelected} /><span className={`ca-count ${count > 500 ? "ca-error" : ""}`}>{count} / 500 字符</span><button className="ca-primary ca-send" disabled={busy || uncertain || !session.enabled || !selected || !question.trim() || count > 500}>{busy ? "正在处理…" : "发送问题"} <ArrowRight size={16} /></button></div></form>

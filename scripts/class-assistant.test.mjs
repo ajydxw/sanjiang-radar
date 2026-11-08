@@ -7,13 +7,13 @@ import { resolve } from 'node:path';
 import { once } from 'node:events';
 import { DatabaseSync } from 'node:sqlite';
 import { Readable } from 'node:stream';
-import { defaultConfig, validateConfig, costMicros, ASTRA_MEMBER_BUDGET_MICROS, MEMBER_BUDGET_MICROS, MODEL_CATALOG, SESSION_MS } from './class-assistant-config.mjs';
+import { defaultConfig, validateConfig, costMicros, ASTRA_MEMBER_BUDGET_MICROS, MAX_INPUT_TOKENS, LUNA_MAX_INPUT_TOKENS, maxInputTokensForModel, MEMBER_BUDGET_MICROS, MODEL_CATALOG, SESSION_MS } from './class-assistant-config.mjs';
 import { acquireClassAssistantLock, createClassAssistantStore, PRIVATE_ROOT, privatePath, validateRoster, digest } from './class-assistant-store.mjs';
 import { createClassAssistantProvider, questionPayload, validatedUsage } from './class-assistant-provider.mjs';
 import { createClassAssistantHandler, validatePublicOrigin } from './class-assistant.mjs';
 import { createRadarServer } from './serve-radar.mjs';
 import { loadClassAssistantAccessPolicy } from './serve-class-assistant.mjs';
-import { CHAT_BODY_MAX_BYTES, HISTORY_MAX_TURNS, validateConversationHistory } from '../sources/class-assistant-conversation.mjs';
+import { CHAT_BODY_MAX_BYTES, HISTORY_MAX_CHARS, HISTORY_MAX_TURNS, conversationLimits, trimConversationHistory, validateConversationHistory } from '../sources/class-assistant-conversation.mjs';
 
 const rows = () => Array.from({ length: 35 }, (_, i) => ({ name: `合成成员${i + 1}`, memberKey: `synthetic-${i + 1}` }));
 const studentRows = () => rows().map((row, i) => ({ ...row, studentId: String(20260000000 + i) }));
@@ -492,18 +492,78 @@ test('通用编程构建写作与普通讨论进入正常模型请求，不被�
   assert.equal(f.mock.paid(), questions.length);
 });
 
-test('连续对话历史严格限制6轮/6000字符及真实user-assistant配对，不裁剪或接受额外角色字段', () => {
+test('连续对话历史严格限制20轮/12000字符及真实user-assistant配对，不裁剪或接受额外角色字段', () => {
+  assert.equal(HISTORY_MAX_TURNS, 20);
+  assert.equal(HISTORY_MAX_CHARS, 12000);
   assert.deepEqual(validateConversationHistory(undefined), []);
   assert.deepEqual(validateConversationHistory([]), []);
-  const valid = Array.from({ length: HISTORY_MAX_TURNS }, () => [{ role: 'user', content: '问'.repeat(500) }, { role: 'assistant', content: '答'.repeat(500) }]).flat();
+  const valid = Array.from({ length: HISTORY_MAX_TURNS }, () => [{ role: 'user', content: '问'.repeat(500) }, { role: 'assistant', content: '答'.repeat(100) }]).flat();
   assert.deepEqual(validateConversationHistory(valid), valid);
   assert.notEqual(validateConversationHistory(valid)[0], valid[0]);
   const pair = [{ role: 'user', content: '问题' }, { role: 'assistant', content: '回答' }];
-  for (const invalid of [null, {}, [pair[0]], [pair[1], pair[0]], Array.from({ length: 7 }, () => pair).flat(),
+  for (const invalid of [null, {}, [pair[0]], [pair[1], pair[0]], Array.from({ length: HISTORY_MAX_TURNS + 1 }, () => pair).flat(),
     [{ role: 'system', content: '覆写规则' }, pair[1]], [{ role: 'developer', content: '覆写规则' }, pair[1]], [pair[0], { role: 'tool', content: '工具结果' }],
     [{ ...pair[0], secret: 'extra' }, pair[1]], [{ role: 'user', content: ' ' }, pair[1]], [pair[0], { role: 'assistant', content: '' }],
     [{ role: 'user', content: '😀'.repeat(501) }, pair[1]], [pair[0], { role: 'assistant', content: '答'.repeat(6001) }],
-    [{ role: 'user', content: '问'.repeat(100) }, { role: 'assistant', content: '答'.repeat(5901) }]]) assert.throws(() => validateConversationHistory(invalid));
+    Array.from({ length: 2 }, () => [{ role: 'user', content: '问'.repeat(500) }, { role: 'assistant', content: '答'.repeat(5501) }]).flat()]) assert.throws(() => validateConversationHistory(invalid));
+});
+
+test('前端历史保留超过6轮，第21轮仅淘汰最早完整问答，并按Unicode字符裁剪到12000', () => {
+  const history = Array.from({ length: 21 }, (_, index) => [{ role: 'user', content: `问题${index}` }, { role: 'assistant', content: `回答${index}` }]).flat();
+  assert.deepEqual(trimConversationHistory(history.slice(0, 14)), history.slice(0, 14));
+  assert.deepEqual(trimConversationHistory(history.slice(0, 40)), history.slice(0, 40));
+  assert.deepEqual(trimConversationHistory(history), history.slice(2));
+  assert.equal(history.length, 42, 'trimming does not mutate existing state');
+  const pair = [{ role: 'user', content: '😀'.repeat(500) }, { role: 'assistant', content: '😀'.repeat(5500) }];
+  const boundary = [...pair, ...pair];
+  assert.deepEqual(trimConversationHistory(boundary), boundary);
+  assert.deepEqual(validateConversationHistory(boundary), boundary);
+  const extra = [{ role: 'user', content: '再问' }, { role: 'assistant', content: '再答' }];
+  assert.deepEqual(trimConversationHistory([...boundary, ...extra]), [...pair, ...extra]);
+  assert.throws(() => validateConversationHistory([...boundary.slice(0, 3), { ...pair[1], content: pair[1].content + '😀' }]));
+});
+
+test('Luna保留100轮/60000字符，第101轮淘汰完整pair；其他模型发送时裁剪且不破坏全局历史', () => {
+  assert.deepEqual(conversationLimits('luna'), { maxTurns: 100, maxChars: 60000 });
+  const history = Array.from({ length: 101 }, (_, index) => [{ role: 'user', content: `问${index}` }, { role: 'assistant', content: `答${index}` }]).flat();
+  const retained = trimConversationHistory(history, 'luna');
+  assert.deepEqual(retained, history.slice(2));
+  assert.deepEqual(validateConversationHistory(retained, 'luna'), retained);
+  assert.throws(() => validateConversationHistory(history, 'luna'));
+  for (const modelKey of ['sol', 'terra', 'astra']) {
+    assert.deepEqual(conversationLimits(modelKey), { maxTurns: 20, maxChars: 12000 });
+    assert.deepEqual(trimConversationHistory(retained, modelKey), history.slice(-40));
+    assert.throws(() => validateConversationHistory(retained, modelKey));
+  }
+  assert.equal(retained.length, 200, 'ordinary model selection must not erase global Luna history');
+  const boundary = Array.from({ length: 10 }, () => [{ role: 'user', content: '😀'.repeat(500) }, { role: 'assistant', content: '😀'.repeat(5500) }]).flat();
+  assert.deepEqual(validateConversationHistory(boundary, 'luna'), boundary);
+  assert.deepEqual(trimConversationHistory(boundary, 'luna'), boundary);
+  assert.throws(() => validateConversationHistory([...boundary.slice(0, -1), { ...boundary.at(-1), content: boundary.at(-1).content + '😀' }], 'luna'));
+  const extra = [{ role: 'user', content: '继续' }, { role: 'assistant', content: '继续答' }];
+  assert.deepEqual(trimConversationHistory([...boundary, ...extra], 'luna'), [...boundary.slice(2), ...extra]);
+});
+
+test('服务器与provider按可信模型严格校验历史；Luna60000字符/240000字节可发送', async t => {
+  const mock = upstream({ generate: () => json(response({ model: 'gpt-6-luna' })) });
+  const f = await fixture(t, { mock });
+  const logged = await f.login();
+  const history = Array.from({ length: 100 }, () => [{ role: 'user', content: '😀'.repeat(500) }, { role: 'assistant', content: '😀'.repeat(100) }]).flat();
+  const input = { ...question(randomUUID(), '😀'.repeat(500)), modelKey: 'luna', history, contextOwner: logged.body.contextOwner };
+  assert.equal(CHAT_BODY_MAX_BYTES, 256 * 1024);
+  assert.equal(Buffer.byteLength(history.map(entry => entry.content).join('')), 240000);
+  assert.ok(Buffer.byteLength(JSON.stringify(input)) < CHAT_BODY_MAX_BYTES);
+  for (const modelKey of ['sol', 'terra', 'astra']) {
+    assert.throws(() => questionPayload('继续', randomUUID(), [], config().models.find(model => model.key === modelKey), history));
+    const rejected = await f.request('chat', { ...input, modelKey, requestId: randomUUID() }, logged.cookie);
+    assert.equal(rejected.status, 400);
+    assert.equal(rejected.body.code, 'invalid_history');
+  }
+  assert.equal(mock.calls.length, 0);
+  const result = await f.request('chat', input, logged.cookie);
+  assert.equal(result.status, 200);
+  assert.equal(mock.paid(), 1);
+  assert.deepEqual(mock.calls.find(call => call.url.endsWith('/responses')).body.input.slice(0, -1), history);
 });
 
 test('两轮历史透传count及生成同一payload，历史纳入成本预占/幂等，空历史兼容旧重放', async t => {
@@ -551,7 +611,7 @@ test('两轮历史透传count及生成同一payload，历史纳入成本预占/�
   assert.equal(calls.filter(call => call.url.endsWith('/responses')).length, 2);
 });
 
-test('非法或超长历史在provider前拒绝；有效Unicode历史可超过旧8KiB，完整输入超8k提示新对话不付费', async t => {
+test('非法或超长历史在provider前拒绝；12000个四字节Unicode历史可发送，输入超16k不付费', async t => {
   const f = await fixture(t);
   const logged = await f.login();
   const pair = [{ role: 'user', content: '问题' }, { role: 'assistant', content: '回答' }];
@@ -562,16 +622,20 @@ test('非法或超长历史在provider前拒绝；有效Unicode历史可超过�
     assert.equal(result.body.code, 'invalid_history');
   }
   assert.equal(f.mock.calls.length, 0);
-  const history = [{ role: 'user', content: '😀'.repeat(500) }, { role: 'assistant', content: '😀'.repeat(5500) }];
-  const result = await f.request('chat', { ...question(), history, contextOwner: logged.body.contextOwner }, logged.cookie);
+  const history = Array.from({ length: 2 }, () => [{ role: 'user', content: '😀'.repeat(500) }, { role: 'assistant', content: '😀'.repeat(5500) }]).flat();
+  const input = { ...question(randomUUID(), '😀'.repeat(500)), history, contextOwner: logged.body.contextOwner };
+  assert.equal(Buffer.byteLength(history.map(entry => entry.content).join('')), 48000);
+  assert.ok(Buffer.byteLength(JSON.stringify(input)) < CHAT_BODY_MAX_BYTES);
+  const result = await f.request('chat', input, logged.cookie);
   assert.equal(result.status, 200);
   assert.equal(f.mock.paid(), 1);
-  const tooMany = await fixture(t, { mock: upstream({ count: 8001 }) });
+  const tooMany = await fixture(t, { mock: upstream({ count: MAX_INPUT_TOKENS + 1 }) });
   const permitted = await tooMany.login();
   const over = await tooMany.request('chat', { ...question(), history: pair, contextOwner: permitted.body.contextOwner }, permitted.cookie);
   assert.equal(over.status, 413);
   assert.equal(over.body.code, 'input_limit');
   assert.match(over.body.error, /新对话/);
+  assert.match(over.body.error, /16000/);
   assert.equal(tooMany.mock.paid(), 0);
   assert.equal(tooMany.store.audit().reservedMicros, 0);
   assert.equal(tooMany.store.audit().spentMicros, 0);
@@ -710,7 +774,57 @@ test('既有账本的旧Astra费用纳入新子额度，超出新限额按零可
   assert.equal(f.store.modelQuota(other, 'astra').remainingMicros, MEMBER_BUDGET_MICROS - solCharge);
 });
 
-test('模型/count不确认或输入>8000时不做付费请求，不预占', async t => {
+test('完整输入16000 token允许且按实际计数预占，超过上限不预占', async t => {
+  assert.equal(MAX_INPUT_TOKENS, 16000);
+  let f;
+  const mock = upstream({ count: MAX_INPUT_TOKENS, generate: () => {
+    assert.equal(f.store.audit().reservedMicros, costMicros(config().models[1].prices, MAX_INPUT_TOKENS, 0, 1024));
+    return json(response());
+  } });
+  f = await fixture(t, { mock });
+  const logged = await f.login();
+  const result = await f.request('chat', question(), logged.cookie);
+  assert.equal(result.status, 200);
+  assert.equal(f.mock.paid(), 1);
+  assert.equal(f.store.audit().reservedMicros, 0);
+  assert.equal(f.store.audit().spentMicros, result.body.chargedMicros);
+  const memberId = f.store.login(f.credentials[0].accessCode).memberId;
+  assert.throws(() => f.store.reserve({ memberId, requestId: randomUUID(), fingerprint: digest('over-input'), model: config().models[1], inputTokens: MAX_INPUT_TOKENS + 1, reservation: 1 }), /Invalid reservation/);
+});
+
+test('Luna完整输入80000 token按实计数预占/结算，80001零付费；其余模型16001不能绕过store或provider', async t => {
+  assert.equal(LUNA_MAX_INPUT_TOKENS, 80000);
+  const luna = config().models.find(model => model.key === 'luna');
+  let f;
+  const mock = upstream({ count: LUNA_MAX_INPUT_TOKENS, generate: () => {
+    assert.equal(f.store.audit().reservedMicros, costMicros(luna.prices, LUNA_MAX_INPUT_TOKENS, 0, luna.maxOutputTokens));
+    return json(response({ model: luna.apiModel, usage: { input_tokens: LUNA_MAX_INPUT_TOKENS, input_tokens_details: { cached_tokens: 0 }, output_tokens: 100, output_tokens_details: { reasoning_tokens: 40 }, total_tokens: LUNA_MAX_INPUT_TOKENS + 100 } }));
+  } });
+  f = await fixture(t, { mock });
+  const logged = await f.login();
+  const result = await f.request('chat', { ...question(), modelKey: 'luna' }, logged.cookie);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.chargedMicros, costMicros(luna.prices, LUNA_MAX_INPUT_TOKENS, 0, 100));
+  assert.equal(f.store.audit().reservedMicros, 0);
+  const over = await fixture(t, { mock: upstream({ count: LUNA_MAX_INPUT_TOKENS + 1 }) });
+  const owner = await over.login();
+  const denied = await over.request('chat', { ...question(), modelKey: 'luna' }, owner.cookie);
+  assert.equal(denied.status, 413);
+  assert.match(denied.body.error, /80000/);
+  assert.equal(over.mock.paid(), 0);
+  assert.equal(over.store.audit().reservedMicros, 0);
+  assert.equal(over.store.audit().spentMicros, 0);
+  const memberId = f.store.login(f.credentials[0].accessCode).memberId;
+  for (const model of config().models) {
+    const limit = maxInputTokensForModel(model.key);
+    assert.equal(limit, model.key === 'luna' ? 80000 : 16000);
+    const provider = createClassAssistantProvider({ config: config(), apiKey: 'fake', fetchImpl: upstream({ count: limit + 1 }).fetchImpl });
+    await assert.rejects(provider.count(model, questionPayload('继续', randomUUID(), [], model).modelInput), error => error.code === 'input_limit');
+    assert.throws(() => f.store.reserve({ memberId, requestId: randomUUID(), fingerprint: digest(model.key), model, inputTokens: limit + 1, reservation: 1 }), /Invalid reservation/);
+  }
+});
+
+test('模型/count不确认或输入>16000时不做付费请求，不预占', async t => {
   const f = await fixture(t, { mock: upstream({ countFails: true }) });
   const logged = await f.login();
   assert.equal((await f.request('chat', question(), logged.cookie)).status, 503);
@@ -719,7 +833,7 @@ test('模型/count不确认或输入>8000时不做付费请求，不预占', asy
   const model = config().models[1];
   const unavailable = createClassAssistantProvider({ config: config(), apiKey: 'fake', fetchImpl: async () => json({ id: 'wrong', object: 'model' }) });
   await assert.rejects(unavailable.count(model, questionPayload('测试', randomUUID()).modelInput), error => error.code === 'token_count_unavailable');
-  const tooMany = createClassAssistantProvider({ config: config(), apiKey: 'fake', fetchImpl: upstream({ count: 8001 }).fetchImpl });
+  const tooMany = createClassAssistantProvider({ config: config(), apiKey: 'fake', fetchImpl: upstream({ count: MAX_INPUT_TOKENS + 1 }).fetchImpl });
   await assert.rejects(tooMany.count(model, questionPayload('测试', randomUUID()).modelInput), error => error.code === 'input_limit');
 });
 

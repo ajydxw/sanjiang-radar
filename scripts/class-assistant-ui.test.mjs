@@ -5,6 +5,7 @@ import { mkdir, readFile, stat } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { chromium } from 'playwright-core';
 import { MODEL_CATALOG, ASTRA_MEMBER_BUDGET_MICROS, costMicros } from './class-assistant-config.mjs';
+import { HISTORY_MAX_TURNS, conversationLimits } from '../sources/class-assistant-conversation.mjs';
 
 test('班级助手的登录、额度、提问和异常状态', async t => {
   const root = resolve(process.env.CLASS_ASSISTANT_UI_ROOT || 'out');
@@ -82,6 +83,7 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   assert.equal(await page.getByRole('menu').count(), 0);
   assert.equal(await picker.getAttribute('aria-expanded'), 'false');
   await page.getByText('$2.142857').waitFor();
+  const lunaLimits = conversationLimits('luna');
   await page.locator('.ca-chat').getByText('付费发送暂未开放').waitFor();
   assert.equal(await page.getByRole('button', { name: '发送问题' }).isDisabled(), true);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'mobile page must not overflow horizontally');
@@ -92,6 +94,7 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   const selectedModel = name => page.waitForFunction(label => document.querySelector('.ca-picker-trigger')?.textContent.includes(label), name);
   const choose = async name => { await picker.click(); await page.getByRole('menuitemradio', { name: new RegExp(name) }).click(); await selectedModel(name); };
   await selectedModel('GPT-6 Luna');
+  await page.getByText(`当前模型最多 ${lunaLimits.maxTurns} 轮问答、${lunaLimits.maxChars} 字符。`, { exact: false }).waitFor();
   await picker.click();
   await page.getByRole('menuitemradio', { name: /GPT-6 Luna/, checked: true }).waitFor();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'open model menu must not overflow on mobile');
@@ -167,6 +170,35 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   await page.getByText('这是一条合成测试回答。').waitFor();
   assert.equal(payloads[7].contextOwner, 'synthetic-owner-b');
   assert.deepEqual(payloads[7].history, []);
+  await page.getByRole('button', { name: '新对话' }).click();
+  const start = payloads.length;
+  for (let index = 0; index < HISTORY_MAX_TURNS + 2; index++) {
+    await page.getByLabel('你的问题').fill(`连续对话第${index}轮`);
+    await page.getByRole('button', { name: '发送问题' }).click();
+    await page.waitForFunction(count => document.querySelectorAll('.ca-message.assistant').length === count, index + 1);
+    assert.equal(payloads[start + index].history.length, index * 2);
+  }
+  assert.equal(payloads.at(-1).history[0].content, '连续对话第0轮');
+  await choose('GPT-6.1 Sol');
+  await page.getByText(`下一次提问可携带 ${HISTORY_MAX_TURNS} 轮前文`, { exact: false }).waitFor();
+  await page.getByText('部分较早问答已移出后续请求的上下文', { exact: false }).waitFor();
+  await page.getByLabel('你的问题').fill('普通模型继续');
+  await page.getByRole('button', { name: '发送问题' }).click();
+  await page.waitForFunction(count => document.querySelectorAll('.ca-message.assistant').length === count, HISTORY_MAX_TURNS + 3);
+  assert.equal(payloads.at(-1).history.length, HISTORY_MAX_TURNS * 2);
+  assert.equal(payloads.at(-1).history[0].content, '连续对话第2轮');
+  await choose('GPT-6 Luna');
+  await page.getByLabel('你的问题').fill('切回Luna继续');
+  await page.getByRole('button', { name: '发送问题' }).click();
+  await page.waitForFunction(count => document.querySelectorAll('.ca-message.assistant').length === count, HISTORY_MAX_TURNS + 4);
+  assert.equal(payloads.at(-1).history.length, (HISTORY_MAX_TURNS + 3) * 2);
+  assert.equal(payloads.at(-1).history[0].content, '连续对话第0轮');
+  assert.equal(await page.getByText('部分较早问答已移出后续请求的上下文', { exact: false }).count(), 0);
+  await page.reload();
+  await page.getByLabel('你的问题').fill('刷新后无上下文');
+  await page.getByRole('button', { name: '发送问题' }).click();
+  await page.getByText('这是一条合成测试回答。').waitFor();
+  assert.deepEqual(payloads.at(-1).history, []);
   await page.getByRole('button', { name: '退出', exact: true }).click();
   await page.getByLabel('学号').waitFor();
   assert.equal(await page.getByText('这是一条合成测试回答。').count(), 0);

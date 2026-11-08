@@ -5,7 +5,9 @@ export const TOTAL_BUDGET_MICROS = 75_000_000;
 export const MEMBER_BUDGET_MICROS = 2_142_857;
 export const ASTRA_MEMBER_BUDGET_MICROS = 350_000;
 export const UNALLOCATED_MICROS = 5;
-export const MAX_INPUT_TOKENS = 8000;
+export const MAX_INPUT_TOKENS = 16000;
+export const LUNA_MAX_INPUT_TOKENS = 80000;
+export const maxInputTokensForModel = modelKey => modelKey === 'luna' ? LUNA_MAX_INPUT_TOKENS : MAX_INPUT_TOKENS;
 export const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 export const MODEL_CATALOG = Object.freeze([
   { key: 'astra', label: 'GPT-6 Astra', apiModel: 'gpt-6-astra', inputPerMillion: 10, cachedInputPerMillion: 1, outputPerMillion: 50 },

@@ -93,7 +93,7 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
       || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(input.message)
       || typeof input.modelKey !== 'string' || !config.models.some(model => model.key === input.modelKey)) throw assistantError(400, 'invalid_question', '请提交500字符以内的问题、允许的模型和唯一请求编号。');
     let history;
-    try { history = validateConversationHistory(input.history); }
+    try { history = validateConversationHistory(input.history, input.modelKey); }
     catch (error) { throw assistantError(400, 'invalid_history', error.message); }
     if ((history.length || Object.hasOwn(input, 'contextOwner')) && input.contextOwner !== contextOwner(memberId)) {
       throw assistantError(409, 'context_owner_changed', '对话账户已变化或无法确认，请开启新对话并刷新登录后再试；未发送付费请求。');

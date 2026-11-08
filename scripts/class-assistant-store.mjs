@@ -5,7 +5,7 @@ import { renameSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { secureDirectory } from './local-secrets.mjs';
-import { ASTRA_MEMBER_BUDGET_MICROS, MEMBER_BUDGET_MICROS, MEMBER_COUNT, SESSION_MS, TOTAL_BUDGET_MICROS, assistantError, exactObject } from './class-assistant-config.mjs';
+import { ASTRA_MEMBER_BUDGET_MICROS, maxInputTokensForModel, MEMBER_BUDGET_MICROS, MEMBER_COUNT, SESSION_MS, TOTAL_BUDGET_MICROS, assistantError, exactObject } from './class-assistant-config.mjs';
 
 export const PRIVATE_ROOT = fileURLToPath(new URL('../.sites-runtime/class-assistant/', import.meta.url));
 export const digest = value => createHash('sha256').update(value).digest('hex');
@@ -306,7 +306,7 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
     },
     logout(token) { if (typeof token === 'string') db.prepare('DELETE FROM sessions WHERE hash=?').run(digest(token)); },
     reserve({ requestId, memberId, fingerprint, model, inputTokens, reservation }) {
-      if (!validRequestId(requestId) || !safeInteger(reservation) || !Number.isSafeInteger(inputTokens) || inputTokens < 1 || inputTokens > 8000) throw new Error('Invalid reservation');
+      if (!validRequestId(requestId) || !safeInteger(reservation) || !Number.isSafeInteger(inputTokens) || inputTokens < 1 || inputTokens > maxInputTokensForModel(model.key)) throw new Error('Invalid reservation');
       return transaction(() => {
         const existing = this.request(requestId, memberId, fingerprint);
         if (existing) return { created: false, request: existing };
