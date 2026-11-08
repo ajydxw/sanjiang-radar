@@ -25,7 +25,7 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
   let authenticated = false, enabled = false, chats = 0, networkFailure = false;
   const payloads = [];
-  let owner = 'synthetic-owner-a';
+  let owner = 'synthetic-owner-a', rejectOrigin = true;
   const remainingMicros = 2141857;
   const models = () => MODEL_CATALOG.map(model => {
     const prices = { input: Math.round(model.inputPerMillion * 1_000_000), cached: Math.round(model.cachedInputPerMillion * 1_000_000), output: Math.round(model.outputPerMillion * 1_000_000) };
@@ -43,7 +43,8 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
       authenticated = false;
       await route.fulfill({ json: { ok: true } });
     } else if (name === 'session') {
-      await route.fulfill({ json: session() });
+      if (rejectOrigin) await route.fulfill({ status: 403, json: { code: 'origin_rejected', error: '请求来源不受允许。' } });
+      else await route.fulfill({ json: session() });
     } else if (name === 'chat') {
       chats++;
       const body = route.request().postDataJSON();
@@ -55,6 +56,10 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
     } else await route.fulfill({ status: 404, json: { error: 'unknown mock', code: 'unknown' } });
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/assistant/`);
+  await page.getByText('当前地址无法访问助手服务，请从三江雷达正式网站进入生活助手。').waitFor();
+  assert.equal(await page.getByRole('link', { name: '进入三江雷达正式网站' }).getAttribute('href'), 'https://ajydxw.github.io/sanjiang-radar/assistant/');
+  rejectOrigin = false;
+  await page.getByRole('button', { name: '重新读取' }).click();
   await page.getByLabel('学号').fill('00000000001');
   await page.getByRole('button', { name: '进入助手' }).click();
   await page.getByRole('heading', { name: /，测试同学$/ }).waitFor();

@@ -36,8 +36,9 @@ async function readJson(req) {
   catch { throw assistantError(400, 'invalid_json', 'JSON请求格式不正确。'); }
 }
 
-export function createClassAssistantHandler({ config, store, publicOrigin, apiKey = process.env[config.apiKeyEnv] || '', fetchImpl, publicItems = [], allowedMemberIds }) {
+export function createClassAssistantHandler({ config, store, publicOrigin, apiKey = process.env[config.apiKeyEnv] || '', fetchImpl, publicItems = [], allowedMemberIds, localPort }) {
   const origin = validatePublicOrigin(publicOrigin);
+  if (localPort !== undefined && (!Number.isInteger(localPort) || localPort < 1 || localPort > 65535)) throw new Error('Invalid local assistant port');
   if (allowedMemberIds !== undefined && (!(allowedMemberIds instanceof Set) || allowedMemberIds.size < 1
     || [...allowedMemberIds].some(id => typeof id !== 'string' || !store.member(id)))) throw new Error('测试访问策略无效，服务不会开放。');
   const allowed = allowedMemberIds === undefined ? undefined : new Set(allowedMemberIds);
@@ -136,6 +137,18 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
   }
   const handleRequest = async (req, res) => {
     const rawPath = req.url?.split('?')[0] || '';
+    if (origin.protocol === 'https:' && localPort !== undefined && ['GET', 'HEAD'].includes(req.method)
+      && ['/assistant', '/assistant/'].includes(rawPath) && req.headers.host !== origin.host) {
+      res.setHeader('Cache-Control', 'no-store');
+      if ([`127.0.0.1:${localPort}`, `localhost:${localPort}`].includes(req.headers.host)) {
+        res.writeHead(302, { Location: `${origin.origin}/assistant/`, 'Content-Length': '0' });
+        res.end();
+      } else {
+        res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Length': '9' });
+        res.end(req.method === 'HEAD' ? undefined : 'Forbidden');
+      }
+      return true;
+    }
     if (rawPath !== '/api/class-assistant' && !rawPath.startsWith(prefix)) return false;
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Pragma', 'no-cache');

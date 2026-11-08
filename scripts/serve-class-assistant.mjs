@@ -40,7 +40,7 @@ export async function startClassAssistantServer() {
   try {
     store = await createClassAssistantStore({ recoverPending: true, lock });
     const allowedMemberIds = await loadClassAssistantAccessPolicy(process.env.CLASS_ASSISTANT_ACCESS_POLICY, store);
-    classAssistantHandler = createClassAssistantHandler({ config, store, publicOrigin, allowedMemberIds, publicItems: await loadPublicAssistantItems() });
+    classAssistantHandler = createClassAssistantHandler({ config, store, publicOrigin, allowedMemberIds, localPort: port, publicItems: await loadPublicAssistantItems() });
     const server = await createRadarServer({ root: resolve('out'), identityOnly: true, classAssistantHandler });
     server.timeout = 400000;
     stop = () => { classAssistantHandler.stop(); server.close(); };

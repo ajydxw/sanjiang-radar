@@ -968,3 +968,63 @@ test('集成静态server只开放class API，旧identity/admin/assistant/likes�
   for (const path of ['/api/identity/session', '/api/admin/session', '/api/assistant/questions', '/api/activity-likes']) assert.equal((await fetch(`${origin}${path}`)).status, 404);
   assert.equal(server.timeout, 15000);
 });
+
+test('旧本机assistant导航仅GET/HEAD固定跳转公网，丢弃查询；任意Host、POST和API不能绕过来源校验', async t => {
+  const f = await fixture(t, { config: config(false) });
+  const root = resolve(f.directory, 'redirect-static');
+  await mkdir(resolve(root, 'assistant'), { recursive: true });
+  await writeFile(resolve(root, 'index.html'), '<!doctype html><title>mock</title>');
+  await writeFile(resolve(root, 'assistant/index.html'), '<!doctype html><title>assistant</title>');
+  let handler;
+  const server = await createRadarServer({ root, identityOnly: true, classAssistantHandler: (req, res) => handler(req, res), log: () => {} });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(async () => { server.closeAllConnections(); await new Promise(done => server.close(done)); });
+  const port = server.address().port;
+  const publicOrigin = 'https://class.example:8443';
+  handler = createClassAssistantHandler({ store: f.store, config: config(false), apiKey: '', publicOrigin, localPort: port, fetchImpl: f.mock.fetchImpl });
+  const request = (path, host, method = 'GET', body) => new Promise((done, fail) => {
+    const req = http.request({ host: '127.0.0.1', port, path, method,
+      headers: { host, ...(body ? { origin: publicOrigin, 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } : {}) } }, response => {
+      let text = '';
+      response.setEncoding('utf8');
+      response.on('data', value => { text += value; });
+      response.on('end', () => done({ status: response.statusCode, headers: response.headers, text }));
+    });
+    req.on('error', fail);
+    req.end(body);
+  });
+  for (const [path, host, method] of [['/assistant', `127.0.0.1:${port}`, 'GET'], ['/assistant/', `localhost:${port}`, 'HEAD'],
+    ['/assistant/?next=https%3A%2F%2Fevil.example%2Fsteal', `127.0.0.1:${port}`, 'GET']]) {
+    const redirected = await request(path, host, method);
+    assert.equal(redirected.status, 302);
+    assert.equal(redirected.headers.location, `${publicOrigin}/assistant/`);
+    assert.equal(redirected.headers['cache-control'], 'no-store');
+    assert.equal(redirected.text, '');
+  }
+  const publicPage = await request('/assistant/', 'class.example:8443');
+  assert.equal(publicPage.status, 200);
+  assert.equal(publicPage.headers.location, undefined);
+  for (const host of ['evil.example', `localhost.evil:${port}`, `127.0.0.1:${port === 65535 ? 4314 : port + 1}`]) {
+    const blocked = await request('/assistant/', host);
+    assert.equal(blocked.status, 403);
+    assert.equal(blocked.headers.location, undefined);
+  }
+  const post = await request('/assistant/', `127.0.0.1:${port}`, 'POST', '{}');
+  assert.equal(post.status, 405);
+  assert.equal(post.headers.location, undefined);
+  const api = await request('/api/class-assistant/session', `127.0.0.1:${port}`);
+  assert.equal(api.status, 403);
+  assert.equal(JSON.parse(api.text).code, 'origin_rejected');
+  assert.equal(api.headers.location, undefined);
+  const login = await request('/api/class-assistant/login', `localhost:${port}`, 'POST', '{}');
+  assert.equal(login.status, 403);
+  assert.equal(login.headers.location, undefined);
+  const subpath = await request('/assistant/other', `127.0.0.1:${port}`);
+  assert.equal(subpath.status, 404);
+  assert.equal(subpath.headers.location, undefined);
+  handler = createClassAssistantHandler({ store: f.store, config: config(false), apiKey: '', publicOrigin: `http://127.0.0.1:${port}`, localPort: port });
+  assert.equal((await request('/assistant/', `127.0.0.1:${port}`)).status, 200);
+  assert.throws(() => createClassAssistantHandler({ store: f.store, config: config(false), apiKey: '', publicOrigin, localPort: 0 }));
+  assert.equal(f.mock.calls.length, 0);
+});
