@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-07T00:44:59.579Z",
+  "generatedAt": "2026-11-08T00:21:30.826Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -33,7 +33,7 @@
           "url": "https://www.cms.org.cn/upload/file/20260702/1782964399222501.pdf"
         }
       ],
-      "fetchedAt": "2026-11-07T00:43:17.747Z",
+      "fetchedAt": "2026-11-08T00:18:25.944482Z",
       "firstSeenAt": "2026-10-10T04:49:20.653Z",
       "registrationDeadline": "2026-10-19"
     },
@@ -63,7 +63,7 @@
         "赛将于10月21~22日在四川成都举办，报名时间为2026年9月9日-10月11日。 中国计算机学会大学生"
       ],
       "attachments": [],
-      "fetchedAt": "2026-11-07T00:43:22.874Z",
+      "fetchedAt": "2026-11-08T00:18:09.310Z",
       "firstSeenAt": "2026-10-10T04:49:21.882Z"
     },
     {
@@ -92,7 +92,7 @@
         "职业院校组或自行选择任意组别 报名时间 报名时间：2026年10月8日10:00—2026年12月18日14:00 报名须知 人数及方式"
       ],
       "attachments": [],
-      "fetchedAt": "2026-11-07T00:43:29.190Z",
+      "fetchedAt": "2026-11-08T00:18:16.568Z",
       "firstSeenAt": "2026-10-10T04:49:25.064Z"
     },
     {
@@ -117,7 +117,7 @@
       "detailRead": true,
       "dateEvidence": [],
       "attachments": [],
-      "fetchedAt": "2026-10-29T10:07:34.836Z",
+      "fetchedAt": "2026-11-08T00:20:04.235422Z",
       "firstSeenAt": "2026-10-10T04:49:26.735Z"
     },
     {
@@ -146,7 +146,7 @@
         "负责人确认报名方式。 赛事流程 报名入口 报名时间2025年12月17日 - 2026年3月13日 下载准考证 竞赛时间初"
       ],
       "attachments": [],
-      "fetchedAt": "2026-10-23T09:55:37.260Z",
+      "fetchedAt": "2026-11-08T00:20:04.235422Z",
       "firstSeenAt": "2026-10-10T04:49:27.628Z"
     },
     {
@@ -177,6 +177,45 @@
       "attachments": [],
       "fetchedAt": "2026-10-29T10:08:07.134Z",
       "firstSeenAt": "2026-10-22T02:35:37.990Z"
+    },
+    {
+      "id": "competition-a7addb3e2a2e2360",
+      "title": "第十七届全国大学生电子商务“创新、创意及创业”挑战赛报名通知",
+      "category": "竞赛",
+      "source": "全国大学生电子商务三创赛",
+      "sourceType": "competition",
+      "sourcePortal": "https://www.3chuang.net/#/news-notice-detail/179",
+      "publishedAt": "2026-11-01",
+      "freshmanAllowed": "allowed",
+      "eligibilityEvidence": "参赛成员须为普通高校全日制在校专科生、本科生或研究生，专业不限；3–5名学生组队，须通过本校审核。三江备案与校内安排尚未核验。",
+      "registrationStart": "2026-11-01",
+      "registrationDeadline": "2027-01-20",
+      "summary": "第十七届三创赛已开放团队报名，截止2027年1月20日；3–5名全日制在校大学生组队，专业不限。学校须于11月30日前完成备案，团队须经本校审核；三江备案及校内截止待核实。",
+      "registrationNote": "全国团队报名期为2026年11月1日至2027年1月20日；学校备案截止2026年11月30日，不是学生报名截止。三江校内截止、备案状态及具体赛道条件尚未核实。",
+      "registrationMethod": "成员分别在三创赛官网注册，队长创建3–5人团队并邀请成员，提交后经本校校赛负责人审核通过才报名成功；请先确认学校备案和校内安排。",
+      "colleges": [],
+      "rewardNote": "赛事证书、奖项及费用以官方规则为准；三江学分、积分认定尚未核验。",
+      "importance": "normal",
+      "verification": "竞赛官方原文",
+      "manuallyVerified": true,
+      "demo": false,
+      "detailRead": true,
+      "dateEvidence": [
+        "官方报名通知：参赛队报名时间为2026年11月1日-2027年1月20日。",
+        "校赛注册及备案时间为2026年11月1日-2026年11月30日；未完成备案的学校学生不能参加。"
+      ],
+      "attachments": [
+        {
+          "title": "第十七届三创赛报名通知.pdf",
+          "url": "https://sanchuang-bodao.oss-cn-hangzhou.aliyuncs.com/system/2026-11-03/2117506872721129472_20261101%20%20%20%E7%AC%AC%E5%8D%81%E4%B8%83%E5%B1%8A%E4%B8%89%E5%88%9B%E8%B5%9B%E6%8A%A5%E5%90%8D%E9%80%9A%E7%9F%A5.pdf"
+        },
+        {
+          "title": "第十七届三创赛竞赛规则.pdf",
+          "url": "https://sanchuang-bodao.oss-cn-hangzhou.aliyuncs.com/system/2026-11-03/2117518848162500608_20261028%20%20%20%E7%AC%AC17%E5%B1%8A%E4%B8%89%E5%88%9B%E8%B5%9B%E7%AB%9E%E8%B5%9B%E8%A7%84%E5%88%99.pdf"
+        }
+      ],
+      "fetchedAt": "2026-11-08T00:20:04.235422Z",
+      "firstSeenAt": "2026-11-08T00:21:30.826Z"
     }
   ],
   "sources": [
@@ -187,9 +226,10 @@
       "sourceType": "competition",
       "state": "partial",
       "count": 1,
-      "lastSuccessAt": "2026-11-07T00:43:17.747Z",
+      "lastSuccessAt": "2026-11-08T00:18:25.944482Z",
       "note": "本次仅核验原官方 PDF，未成功检查栏目新通知；全国报名已截止，三江校内安排另行核实。",
-      "error": "栏目与通知详情页返回 HTTP 404；原官方 PDF 可读取，已核验其中的报名要求及初赛安排。"
+      "error": "栏目与通知详情页返回 HTTP 404；原官方 PDF 可读取，已核验其中的报名要求及初赛安排。",
+      "lastAttemptAt": "2026-11-08T00:21:30.826Z"
     },
     {
       "id": "competition-ccsp",
@@ -198,9 +238,10 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-07T00:43:25.083Z",
+      "lastSuccessAt": "2026-11-08T00:18:11.591Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
-      "error": null
+      "error": null,
+      "lastAttemptAt": "2026-11-08T00:21:30.826Z"
     },
     {
       "id": "competition-lanqiao",
@@ -209,42 +250,46 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-07T00:43:29.190Z",
+      "lastSuccessAt": "2026-11-08T00:18:16.574Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
-      "error": null
+      "error": null,
+      "lastAttemptAt": "2026-11-08T00:21:30.826Z"
     },
     {
       "id": "competition-design",
       "name": "蓝桥杯 · 视觉艺术设计赛",
       "url": "https://design.lanqiao.cn/",
       "sourceType": "competition",
-      "state": "failed",
+      "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-10-29T10:07:34.879Z",
-      "note": "更新失败时保留上次成功的数据。",
-      "error": "动态正文未能读取：浏览器运行环境受限；保留上次成功数据。"
+      "lastSuccessAt": "2026-11-08T00:20:04.235422Z",
+      "note": "已核验当前赛事公开页面；校内安排另行核验。",
+      "error": null,
+      "lastAttemptAt": "2026-11-08T00:21:30.826Z"
     },
     {
       "id": "competition-english",
       "name": "大学生英语竞赛 · 官方合作报名页",
       "url": "https://neccs.saikr.com/",
       "sourceType": "competition",
-      "state": "failed",
+      "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-10-23T09:55:37.279Z",
-      "note": "更新失败时保留上次成功的数据。",
-      "error": "动态正文未能读取：浏览器运行环境受限；保留上次成功数据。"
+      "lastSuccessAt": "2026-11-08T00:20:04.235422Z",
+      "note": "当前仍为2026届已截止历史记录，不作为新开放报名机会。",
+      "error": null,
+      "lastAttemptAt": "2026-11-08T00:21:30.826Z"
     },
     {
       "id": "competition-sanchuang",
       "name": "全国大学生电子商务三创赛",
       "url": "https://www.3chuang.net/",
       "sourceType": "competition",
-      "state": "failed",
-      "count": 1,
-      "lastSuccessAt": "2026-10-29T10:08:07.143Z",
-      "note": "更新失败时保留上次成功的数据。",
-      "error": "动态正文未能读取：浏览器运行环境受限；保留上次成功数据。"
+      "state": "ok",
+      "count": 2,
+      "lastSuccessAt": "2026-11-08T00:20:04.235422Z",
+      "note": "已核验第十七届报名通知及官网日程，保留旧届已截止记录；三江备案、校内安排和具体赛道要求另行核验。",
+      "error": null,
+      "lastAttemptAt": "2026-11-08T00:21:30.826Z"
     }
   ]
 }

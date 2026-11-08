@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-07T00:42:34.140Z",
+  "generatedAt": "2026-11-08T00:21:30.826Z",
   "items": [
     {
       "id": "wechat-a88c5e10690ab5eb",
@@ -36,7 +36,7 @@
       "note": "文章链接导入已接通；仅保留有用的信息摘要与原文链接。自动发现新推文尚未配置。",
       "error": "公开文章当前无法读取，保留上次成功快照。",
       "discoveryMode": "article-links",
-      "lastAttemptAt": "2026-11-07T00:42:34.140Z"
+      "lastAttemptAt": "2026-11-08T00:21:30.826Z"
     }
   ]
 }
