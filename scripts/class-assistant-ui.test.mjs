@@ -54,7 +54,7 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   await page.goto(`http://127.0.0.1:${server.address().port}/assistant/`);
   await page.getByLabel('学号').fill('00000000001');
   await page.getByRole('button', { name: '进入助手' }).click();
-  await page.getByRole('heading', { name: '你好，测试同学' }).waitFor();
+  await page.getByRole('heading', { name: /，测试同学$/ }).waitFor();
   assert.equal(await page.locator('.ca-model').count(), 4);
   assert.deepEqual(await page.locator('.ca-model strong').allTextContents(), ['GPT-6 Luna', 'GPT-6.1 Terra', 'GPT-6.1 Sol', 'GPT-6 Astra']);
   await page.getByText('日常问答推荐').waitFor();
@@ -76,6 +76,11 @@ test('班级助手的登录、额度、提问和异常状态', async t => {
   const sol = page.locator('.ca-model').filter({ hasText: 'GPT-6.1 Sol' });
   await luna.waitFor({ state: 'visible' });
   await page.waitForFunction(() => [...document.querySelectorAll('.ca-model')].some(el => el.textContent.includes('GPT-6 Luna') && el.getAttribute('aria-pressed') === 'true'));
+  await page.locator('.ca-model-section').screenshot({ path: 'artifacts/model-selection-mobile.png' });
+  await page.setViewportSize({ width: 2048, height: 941 });
+  await page.locator('.ca-model-section').screenshot({ path: 'artifacts/model-selection-desktop.png' });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'desktop must not overflow');
+  await page.setViewportSize({ width: 390, height: 844 });
   await sol.click();
   assert.equal(await sol.getAttribute('aria-pressed'), 'true');
   await page.getByRole('button', { name: '刷新余额' }).click();
