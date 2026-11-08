@@ -10,7 +10,7 @@ async function requestIdentity(action: string, body?: object): Promise<Session> 
   const response = await fetch(`/api/identity/${action}`, {
     method: body ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store',
     ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(30000),
   });
   if (!response.ok) throw new Error(response.status === 401 ? '姓名或学号不匹配，请检查后重试。'
     : response.status === 429 ? '尝试较频繁，请稍后再试。' : '身份服务暂不可用，你仍可直接浏览。');
