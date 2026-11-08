@@ -35,8 +35,12 @@ async function readJson(req) {
   catch { throw assistantError(400, 'invalid_json', 'JSON请求格式不正确。'); }
 }
 
-export function createClassAssistantHandler({ config, store, publicOrigin, apiKey = process.env[config.apiKeyEnv] || '', fetchImpl, publicItems = [] }) {
+export function createClassAssistantHandler({ config, store, publicOrigin, apiKey = process.env[config.apiKeyEnv] || '', fetchImpl, publicItems = [], allowedMemberIds }) {
   const origin = validatePublicOrigin(publicOrigin);
+  if (allowedMemberIds !== undefined && (!(allowedMemberIds instanceof Set) || allowedMemberIds.size < 1
+    || [...allowedMemberIds].some(id => typeof id !== 'string' || !store.member(id)))) throw new Error('测试访问策略无效，服务不会开放。');
+  const allowed = allowedMemberIds === undefined ? undefined : new Set(allowedMemberIds);
+  const permits = memberId => allowed === undefined || allowed.has(memberId);
   const provider = createClassAssistantProvider({ config, apiKey, fetchImpl, publicItems });
   let stopping = false;
   const inFlight = new Set();
@@ -51,6 +55,7 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
     return null;
   }
   function session(memberId = null) {
+    if (memberId && !permits(memberId)) memberId = null;
     const member = memberId ? store.member(memberId) : null;
     const reason = readiness(memberId);
     const enabled = reason === null;
@@ -76,6 +81,7 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
   }
   async function chat(memberId, input) {
     if (stopping) throw assistantError(503, 'service_stopping', '服务正在停止，请稍后再试。');
+    if (!permits(memberId)) throw assistantError(401, 'authentication_required', '请先使用本人学号登录。');
     if (!exactObject(input, ['modelKey', 'message', 'requestId']) || !validRequestId(input.requestId)
       || typeof input.message !== 'string' || !input.message.trim() || [...input.message].length > QUESTION_MAX_CHARS
       || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(input.message)
@@ -134,7 +140,7 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
       const expectedMethod = endpoint === 'session' ? 'GET' : 'POST';
       if (req.method !== expectedMethod) { res.setHeader('Allow', expectedMethod); throw assistantError(405, 'method_not_allowed', '请求方法不受支持。'); }
       const token = tokenFrom(req);
-      const memberId = store.authenticate(token);
+      const memberId = store.authenticate(token, { allowedMemberIds: allowed });
       if (endpoint === 'session') {
         if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] || 0) > 0) throw assistantError(400, 'invalid_body', '此接口不接受请求体。');
         send(200, session(memberId));
@@ -148,7 +154,7 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
       const input = await readJson(req);
       if (endpoint === 'login') {
         if (!exactObject(input, ['accessCode']) || typeof input.accessCode !== 'string' || input.accessCode.length > 512) throw assistantError(401, 'login_failed', '学号无效或暂不可用。');
-        const logged = store.login(input.accessCode, token);
+        const logged = store.login(input.accessCode, token, { allowedMemberIds: allowed });
         res.setHeader('Set-Cookie', cookie(logged.token));
         send(200, session(logged.memberId));
       } else if (endpoint === 'logout') {

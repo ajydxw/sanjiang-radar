@@ -167,6 +167,19 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
     directory,
     close() { db.close(); },
     configured,
+    resolveAllowedMembers(policy) {
+      if (!exactObject(policy, ['allowedStudentIds']) || !Array.isArray(policy.allowedStudentIds)
+        || policy.allowedStudentIds.length < 1 || policy.allowedStudentIds.length > MEMBER_COUNT
+        || policy.allowedStudentIds.some(value => typeof value !== 'string' || !/^[0-9]{11}$/.test(value))
+        || new Set(policy.allowedStudentIds).size !== policy.allowedStudentIds.length) throw new Error('测试访问策略无效，服务不会开放。');
+      const allowed = new Set();
+      for (const studentId of policy.allowedStudentIds) {
+        const row = db.prepare('SELECT id FROM members WHERE code_hash=?').get(digest(studentId));
+        if (!row) throw new Error('测试访问策略含未知学号，服务不会开放。');
+        allowed.add(row.id);
+      }
+      return allowed;
+    },
     halted() { return Boolean(db.prepare("SELECT 1 FROM runtime_flags WHERE key='billing_halt'").get()); },
     member: memberDto,
     modelQuota(memberId, modelKey) {
@@ -270,10 +283,11 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
         db.prepare('DELETE FROM rate_limits WHERE window<?').run(window - 2);
       });
     },
-    login(code, previousToken = null) {
+    login(code, previousToken = null, { allowedMemberIds } = {}) {
       const hash = digest(typeof code === 'string' ? code : '');
       const member = db.prepare('SELECT id FROM members WHERE code_hash=?').get(hash);
-      if (!configured() || !member || !accessCodePattern.test(code)) throw assistantError(401, 'login_failed', '学号无效或暂不可用。');
+      if (!configured() || !member || !accessCodePattern.test(code)
+        || allowedMemberIds !== undefined && !allowedMemberIds.has(member.id)) throw assistantError(401, 'login_failed', '学号无效或暂不可用。');
       const token = randomBytes(32).toString('base64url');
       transaction(() => {
         db.prepare('DELETE FROM sessions WHERE expires<=?').run(Date.now());
@@ -285,9 +299,10 @@ export async function createClassAssistantStore({ directory = PRIVATE_ROOT, reco
       });
       return { token, memberId: member.id };
     },
-    authenticate(token) {
+    authenticate(token, { allowedMemberIds } = {}) {
       if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
-      return db.prepare('SELECT member_id AS id FROM sessions WHERE hash=? AND expires>?').get(digest(token), Date.now())?.id ?? null;
+      const id = db.prepare('SELECT member_id AS id FROM sessions WHERE hash=? AND expires>?').get(digest(token), Date.now())?.id ?? null;
+      return id && (allowedMemberIds === undefined || allowedMemberIds.has(id)) ? id : null;
     },
     logout(token) { if (typeof token === 'string') db.prepare('DELETE FROM sessions WHERE hash=?').run(digest(token)); },
     reserve({ requestId, memberId, fingerprint, model, inputTokens, reservation }) {

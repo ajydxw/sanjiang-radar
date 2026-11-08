@@ -21,6 +21,8 @@ jobs:
       NEXT_PUBLIC_IDENTITY_ENABLED: '0'
       NEXT_PUBLIC_IDENTITY_URL: 'https://sanjiang-radar.tail43ed3c.ts.net/'
       NEXT_PUBLIC_IDENTITY_ENTRY_MODE: 'real'
+      NEXT_PUBLIC_CLASS_ASSISTANT_ENABLED: '0'
+      NEXT_PUBLIC_CLASS_ASSISTANT_URL: 'https://sanjiang-radar.tail43ed3c.ts.net:8443/assistant/'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

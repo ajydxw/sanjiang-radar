@@ -12,6 +12,7 @@ import { acquireClassAssistantLock, createClassAssistantStore, PRIVATE_ROOT, pri
 import { createClassAssistantProvider, questionPayload, validatedUsage } from './class-assistant-provider.mjs';
 import { createClassAssistantHandler, validatePublicOrigin } from './class-assistant.mjs';
 import { createRadarServer } from './serve-radar.mjs';
+import { loadClassAssistantAccessPolicy } from './serve-class-assistant.mjs';
 
 const rows = () => Array.from({ length: 35 }, (_, i) => ({ name: `合成成员${i + 1}`, memberKey: `synthetic-${i + 1}` }));
 const studentRows = () => rows().map((row, i) => ({ ...row, studentId: String(20260000000 + i) }));
@@ -45,7 +46,9 @@ async function fixture(t, options = {}) {
   await once(server, 'listening');
   const origin = `http://127.0.0.1:${server.address().port}`;
   const mock = options.mock || upstream();
-  handler = createClassAssistantHandler({ store, config: options.config || config(), publicOrigin: origin, apiKey: options.apiKey ?? 'mock-key-never-networked', fetchImpl: mock.fetchImpl });
+  let allowedMemberIds;
+  const buildHandler = () => createClassAssistantHandler({ store, config: options.config || config(), publicOrigin: origin, apiKey: options.apiKey ?? 'mock-key-never-networked', fetchImpl: mock.fetchImpl, allowedMemberIds });
+  handler = buildHandler();
   t.after(async () => {
     server.closeAllConnections();
     await new Promise(done => server.close(done));
@@ -63,13 +66,14 @@ async function fixture(t, options = {}) {
     return { status: result.status, body: await result.json(), headers: result.headers, cookie: result.headers.get('set-cookie')?.split(';')[0] };
   }
   const login = async (index = 0) => request('login', { accessCode: credentials[index].accessCode });
-  return { get store() { return store; }, directory, server, origin, handler, request, login, mock, credentials,
+  return { get store() { return store; }, get handler() { return handler; }, directory, server, origin, request, login, mock, credentials,
+    restrict(policy) { allowedMemberIds = store.resolveAllowedMembers(policy); handler = buildHandler(); return allowedMemberIds; },
     async restart() {
       store.close();
       const lock = await acquireClassAssistantLock(directory);
       try { store = await createClassAssistantStore({ directory, recoverPending: true, lock }); }
       finally { await lock.release(); }
-      handler = createClassAssistantHandler({ store, config: options.config || config(), publicOrigin: origin, apiKey: options.apiKey ?? 'mock-key-never-networked', fetchImpl: mock.fetchImpl });
+      handler = buildHandler();
     } };
 }
 const question = (requestId = randomUUID(), message = '为什么天空是蓝色？') => ({ modelKey: 'sol', message, requestId });
@@ -173,6 +177,81 @@ test('有reserved或held请求禁止学号迁移，且不得自动恢复/释放�
     assert.equal(f.store.authenticate(logged.token), logged.memberId);
     assert.equal(await readFile(resolve(f.directory, 'private-claim-codes.json'), 'utf8'), original);
   } finally { await lock.release(); }
+});
+
+test('私有策略仅允许两人登录，其他33人不建会话/成功日志；旧cookie、session及历史请求重放均被阻止', async t => {
+  const f = await fixture(t);
+  const lock = await acquireClassAssistantLock(f.directory);
+  try { await f.store.migrateStudentIds(studentRows(), { lock }); } finally { await lock.release(); }
+  const denied = f.store.login(studentRows()[1].studentId);
+  const cookie = `sanjiang_class_assistant=${denied.token}`;
+  const history = question();
+  const fingerprint = digest(JSON.stringify([history.modelKey, history.message.trim()]));
+  f.store.reserve({ memberId: denied.memberId, requestId: history.requestId, fingerprint, model: config().models[1], inputTokens: 1000, reservation: 100 });
+  f.store.settle(history.requestId, { chargedMicros: 17, answer: '禁止通过旧请求重放取得的历史合成回答', usage: {}, providerId: 'resp_private_history' });
+  const before = f.store.audit();
+  const allowedIds = f.restrict({ allowedStudentIds: [studentRows()[0].studentId, studentRows()[29].studentId] });
+  const database = new DatabaseSync(resolve(f.directory, 'ledger.sqlite'));
+  const initialSessions = database.prepare('SELECT count(*) AS n FROM sessions').get().n;
+  const initialLogins = database.prepare('SELECT count(*) AS n FROM login_events').get().n;
+  for (const row of studentRows().filter((_, i) => ![0, 29].includes(i))) {
+    assert.throws(() => f.store.login(row.studentId, null, { allowedMemberIds: allowedIds }), error => error.code === 'login_failed');
+  }
+  assert.equal(database.prepare('SELECT count(*) AS n FROM sessions').get().n, initialSessions);
+  assert.equal(database.prepare('SELECT count(*) AS n FROM login_events').get().n, initialLogins);
+  assert.equal(f.store.authenticate(denied.token, { allowedMemberIds: allowedIds }), null);
+  assert.equal(f.store.authenticate(denied.token), denied.memberId, 'historical session remains saved but policy blocks its use');
+  assert.equal(f.handler.session(denied.memberId).authenticated, false);
+  const session = await f.request('session', undefined, cookie);
+  assert.equal(session.body.authenticated, false);
+  assert.ok(!('member' in session.body));
+  assert.ok(!JSON.stringify(session.body).includes('合成成员2'));
+  assert.equal((await f.request('chat', history, cookie)).status, 401);
+  assert.equal((await f.request('chat', question(), cookie)).status, 401);
+  const deniedLogin = await f.request('login', { accessCode: studentRows()[1].studentId });
+  assert.equal(deniedLogin.status, 401);
+  assert.equal(deniedLogin.headers.get('set-cookie'), null);
+  assert.equal(database.prepare('SELECT count(*) AS n FROM login_events').get().n, initialLogins);
+  for (const index of [0, 29]) {
+    const permitted = await f.request('login', { accessCode: studentRows()[index].studentId });
+    assert.equal(permitted.status, 200);
+    assert.equal(permitted.body.authenticated, true);
+    const free = await f.request('chat', question(randomUUID(), '评价现任总统'), permitted.cookie);
+    assert.equal(free.body.status, 'filtered');
+  }
+  assert.equal(database.prepare('SELECT count(*) AS n FROM login_events').get().n, initialLogins + 2);
+  database.close();
+  await f.restart();
+  assert.equal((await f.request('session', undefined, cookie)).body.authenticated, false);
+  assert.deepEqual(f.store.audit(), before);
+  assert.equal(f.mock.calls.length, 0, 'policy rejections never contact either token counting or paid providers');
+});
+
+test('访问策略空值、重复、未知学号、非法文件均关闭失败；未设置策略保留兼容，传入集合不能被外部扩权', async t => {
+  const f = await fixture(t);
+  const lock = await acquireClassAssistantLock(f.directory);
+  try { await f.store.migrateStudentIds(studentRows(), { lock }); } finally { await lock.release(); }
+  const first = studentRows()[0].studentId;
+  for (const value of [null, {}, { allowedStudentIds: [] }, { allowedStudentIds: [first, first] }, { allowedStudentIds: ['20999999999'] },
+    { allowedStudentIds: [123] }, { allowedStudentIds: [first], extra: true }]) assert.throws(() => f.store.resolveAllowedMembers(value));
+  assert.equal(await loadClassAssistantAccessPolicy(undefined, f.store), undefined);
+  await assert.rejects(loadClassAssistantAccessPolicy('', f.store));
+  await assert.rejects(loadClassAssistantAccessPolicy(resolve(f.directory, 'missing-policy.json'), f.store));
+  await assert.rejects(loadClassAssistantAccessPolicy(resolve(f.directory, '..', '..', 'public', 'policy.json'), f.store));
+  const policyPath = resolve(f.directory, 'access-policy.json');
+  for (const contents of ['{invalid json', '{"allowedStudentIds":[]}', ' '.repeat(4097)]) {
+    await writeFile(policyPath, contents);
+    await assert.rejects(loadClassAssistantAccessPolicy(policyPath, f.store));
+  }
+  await writeFile(policyPath, JSON.stringify({ allowedStudentIds: [first, studentRows()[29].studentId] }));
+  const allowed = await loadClassAssistantAccessPolicy(policyPath, f.store);
+  assert.equal(allowed.size, 2);
+  const outsider = f.store.login(studentRows()[1].studentId).memberId;
+  const handler = createClassAssistantHandler({ store: f.store, config: config(), apiKey: 'mock', publicOrigin: f.origin, allowedMemberIds: allowed });
+  allowed.add(outsider);
+  assert.equal(handler.session(outsider).authenticated, false);
+  for (const invalid of [null, new Set(), new Set(['unknown-member'])]) assert.throws(() => createClassAssistantHandler({ store: f.store, config: config(), publicOrigin: f.origin, allowedMemberIds: invalid }));
+  assert.equal(f.mock.calls.length, 0);
 });
 
 test('登录审计仅记录成功登录的内部账户ID与时间，失败输入和会话刷新不记录，重启保留历史', async t => {

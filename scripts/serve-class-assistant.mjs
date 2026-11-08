@@ -1,10 +1,20 @@
 import { resolve } from 'node:path';
+import { lstat, readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { loadConfig } from './class-assistant-config.mjs';
-import { acquireClassAssistantLock, createClassAssistantStore } from './class-assistant-store.mjs';
+import { acquireClassAssistantLock, createClassAssistantStore, privatePath } from './class-assistant-store.mjs';
 import { createClassAssistantHandler, validatePublicOrigin } from './class-assistant.mjs';
 import { loadPublicAssistantItems } from './class-assistant-provider.mjs';
 import { createRadarServer } from './serve-radar.mjs';
+
+export async function loadClassAssistantAccessPolicy(path, store) {
+  if (path === undefined) return undefined;
+  if (typeof path !== 'string' || !path.trim()) throw new Error('测试访问策略路径无效，服务不会开放。');
+  const file = privatePath(resolve(path));
+  const info = await lstat(file);
+  if (!info.isFile() || info.isSymbolicLink() || info.size > 4096) throw new Error('测试访问策略文件无效，服务不会开放。');
+  return store.resolveAllowedMembers(JSON.parse(await readFile(file, 'utf8')));
+}
 
 export async function startClassAssistantServer() {
   const port = Number(process.env.CLASS_ASSISTANT_PORT || 4314);
@@ -29,7 +39,8 @@ export async function startClassAssistantServer() {
   })();
   try {
     store = await createClassAssistantStore({ recoverPending: true, lock });
-    classAssistantHandler = createClassAssistantHandler({ config, store, publicOrigin, publicItems: await loadPublicAssistantItems() });
+    const allowedMemberIds = await loadClassAssistantAccessPolicy(process.env.CLASS_ASSISTANT_ACCESS_POLICY, store);
+    classAssistantHandler = createClassAssistantHandler({ config, store, publicOrigin, allowedMemberIds, publicItems: await loadPublicAssistantItems() });
     const server = await createRadarServer({ root: resolve('out'), identityOnly: true, classAssistantHandler });
     server.timeout = 400000;
     stop = () => { classAssistantHandler.stop(); server.close(); };
