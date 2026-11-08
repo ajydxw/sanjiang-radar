@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { welcomeGreeting, shouldShowWelcome, personalizedGreeting, identityEntryUrl } from './welcome.ts';
+import { welcomeGreeting, shouldShowWelcome, personalizedGreeting, identityEntryUrl, callName, assistantGreeting } from './welcome.ts';
 
 test('morning varies by weekday and four-week rotation in China time', () => {
  const a = welcomeGreeting(new Date('2026-10-26T00:00:00Z'));
@@ -47,4 +47,24 @@ test('private identity entry requires an explicit credential-free HTTPS root', (
  for (const value of [undefined, '', '/api/identity', 'http://identity.example/', 'javascript:alert(1)', 'https://user:pass@identity.example/', 'https://identity.example/?token=secret', 'https://identity.example/#name', 'https://identity.example/path']) {
   assert.equal(identityEntryUrl(value), null, value);
  }
+});
+
+test('assistant greeting: friendly name, one wish per member per China day, hints from real usage', () => {
+ for (const [name, call] of [['王子涵', '子涵'], ['欧阳子涵', '子涵'], ['欧阳娜', '欧阳娜'], ['张伟', '张伟'], ['测试同学', '测试同学'], [' Alex ', 'Alex']]) assert.equal(callName(name), call, name);
+ const usage = { budgetMicros: 2142857, spentMicros: 1000, remainingMicros: 2141857 };
+ const mondayNoon = new Date('2026-11-09T04:00:00Z');
+ const a = assistantGreeting('王子涵', mondayNoon, usage);
+ assert.equal(a.title, '中午好，子涵');
+ assert.equal(assistantGreeting('王子涵', new Date('2026-11-09T11:00:00Z'), usage).title, '晚上好，子涵');
+ assert.equal(assistantGreeting('测试同学', mondayNoon, usage).title, '中午好，测试同学');
+ assert.equal(a.initials, '子涵');
+ assert.equal(a.hint, '');
+ assert.equal(assistantGreeting('王子涵', new Date('2026-11-09T09:00:00Z'), usage).wish, a.wish);
+ assert.equal(assistantGreeting('王子涵', mondayNoon, usage).hue, assistantGreeting('王子涵', new Date('2026-12-01T04:00:00Z'), usage).hue);
+ assert.ok(new Set(['王子涵', '李明', '张伟', '陈思远', '刘一', '赵小雨', '孙浩然', '周雨桐'].map(name => assistantGreeting(name, mondayNoon, usage).wish)).size > 1);
+ assert.match(assistantGreeting('王子涵', new Date('2026-11-08T16:00:00Z'), usage).hint, /夜深/);
+ assert.match(assistantGreeting('王子涵', mondayNoon, { ...usage, spentMicros: 0 }).hint, /第一次/);
+ assert.match(assistantGreeting('王子涵', mondayNoon, { ...usage, remainingMicros: 100 }).hint, /额度剩余不多/);
+ assert.match(assistantGreeting('王子涵', new Date('2026-11-08T04:00:00Z'), usage).hint, /周末/);
+ assert.equal(assistantGreeting('alex', mondayNoon, usage).initials, 'A');
 });

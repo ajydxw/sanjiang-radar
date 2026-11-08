@@ -781,3 +781,22 @@ body{background:radial-gradient(1100px 420px at 50% -160px,#dfe8fb 0,transparent
 @media(hover:hover){.category-tabs button:not(.selected):hover,.filter-chip:not(.active):hover{border-color:#c9d6f2;background:linear-gradient(180deg,#fff,#eef3ff)}}
 @media(prefers-reduced-motion:reduce){.mobile-nav.is-pressed,.mobile-nav.is-pressed .mobile-nav-indicator,.mobile-nav button.nav-active svg,.mobile-nav.is-pressed button.nav-active svg,.category-tabs button:active,.filter-chip:active{scale:1;translate:none}}
 @media(forced-colors:active){.category-tabs button.selected::after,.filter-chip.active::after{display:none}}
+
+/* 我的：班级生活助手入口放在资料上方，一眼可见 */
+.assistant-entry{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:18px;max-width:980px;margin:0 0 24px;padding:24px 26px;border-radius:22px;color:#fff;background:linear-gradient(120deg,#0f2a3c,#15475a 55%,#168b77);box-shadow:0 18px 40px -24px #0f3b4a;animation:radar-rise .55s .08s cubic-bezier(.2,.7,.2,1) both;transition:transform .2s cubic-bezier(.2,.7,.2,1),box-shadow .2s}
+.assistant-entry::before{content:"";position:absolute;z-index:-1;width:340px;height:340px;right:-90px;top:-170px;border-radius:50%;background:radial-gradient(circle,#5ee0c25c,transparent 65%);animation:assistant-entry-drift 7s ease-in-out infinite alternate}
+.assistant-entry:hover{transform:translateY(-2px);box-shadow:0 24px 46px -22px #0f3b4a}
+.assistant-entry-icon{flex-shrink:0;width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:#ffffff1a;border:1px solid #ffffff2e;color:#a8f0dc;box-shadow:0 0 0 7px #ffffff0b}
+.assistant-entry-icon svg{animation:assistant-entry-float 3.2s ease-in-out infinite}
+.assistant-entry-copy{flex:1;display:grid;gap:5px;min-width:0}
+.assistant-entry-copy small{font-size:11px;font-weight:700;letter-spacing:.12em;color:#8fe3cc}
+.assistant-entry-copy strong{font-size:20px;line-height:1.4}
+.assistant-entry-copy>span{font-size:13px;color:#cde4e4;line-height:1.6}
+.assistant-entry-cta{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:999px;background:#fff;color:#11604f;font-weight:700;font-size:13px;white-space:nowrap;box-shadow:0 8px 18px -10px #00000066}
+.assistant-entry-cta svg{transition:transform .2s cubic-bezier(.2,.7,.2,1)}
+.assistant-entry:hover .assistant-entry-cta svg{transform:translateX(3px)}
+.assistant-entry:focus-visible{outline:3px solid #5dc8b1;outline-offset:3px}
+@keyframes assistant-entry-drift{to{transform:translate(-50px,40px) scale(1.15)}}
+@keyframes assistant-entry-float{50%{transform:translateY(-4px) rotate(8deg)}}
+@media(max-width:760px){.assistant-entry{flex-wrap:wrap;padding:20px;gap:14px;margin-bottom:18px}.assistant-entry-icon{width:50px;height:50px;border-radius:16px}.assistant-entry-copy{flex-basis:calc(100% - 64px)}.assistant-entry-copy strong{font-size:18px}.assistant-entry-cta{width:100%;justify-content:center}}
+@media(prefers-reduced-motion:reduce){.assistant-entry,.assistant-entry::before,.assistant-entry-icon svg{animation:none}.assistant-entry:hover{transform:none}}
