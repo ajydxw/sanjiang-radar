@@ -2,11 +2,12 @@ import { assistantError, costMicros, exactObject, SESSION_MS } from './class-ass
 import { createClassAssistantProvider } from './class-assistant-provider.mjs';
 import { digest, validRequestId } from './class-assistant-store.mjs';
 import { QUESTION_MAX_CHARS } from '../sources/question-policy.mjs';
+import { CHAT_BODY_MAX_BYTES, validateConversationHistory } from '../sources/class-assistant-conversation.mjs';
 
 const cookieName = 'sanjiang_class_assistant';
 const prefix = '/api/class-assistant/';
 const endpoints = new Set(['session', 'login', 'logout', 'chat']);
-const bodyLimit = 8192;
+const bodyLimit = CHAT_BODY_MAX_BYTES;
 
 export function validatePublicOrigin(value) {
   let url;
@@ -41,6 +42,7 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
     || [...allowedMemberIds].some(id => typeof id !== 'string' || !store.member(id)))) throw new Error('测试访问策略无效，服务不会开放。');
   const allowed = allowedMemberIds === undefined ? undefined : new Set(allowedMemberIds);
   const permits = memberId => allowed === undefined || allowed.has(memberId);
+  const contextOwner = memberId => digest(`class-assistant-conversation-owner:${memberId}`);
   const provider = createClassAssistantProvider({ config, apiKey, fetchImpl, publicItems });
   let stopping = false;
   const inFlight = new Set();
@@ -59,7 +61,7 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
     const member = memberId ? store.member(memberId) : null;
     const reason = readiness(memberId);
     const enabled = reason === null;
-    return { configured: store.configured(), authenticated: Boolean(member), enabled, ...(reason ? { reason } : {}), ...(member ? { member } : {}),
+    return { configured: store.configured(), authenticated: Boolean(member), enabled, ...(reason ? { reason } : {}), ...(member ? { member, contextOwner: contextOwner(memberId) } : {}),
       models: config.models.map(model => {
         const estimate = costMicros(model.prices, 1000, 0, 500);
         const quota = store.modelQuota(memberId, model.key);
@@ -82,12 +84,21 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
   async function chat(memberId, input) {
     if (stopping) throw assistantError(503, 'service_stopping', '服务正在停止，请稍后再试。');
     if (!permits(memberId)) throw assistantError(401, 'authentication_required', '请先使用本人学号登录。');
-    if (!exactObject(input, ['modelKey', 'message', 'requestId']) || !validRequestId(input.requestId)
+    const keys = ['modelKey', 'message', 'requestId'];
+    if (input && Object.hasOwn(input, 'history')) keys.push('history');
+    if (input && Object.hasOwn(input, 'contextOwner')) keys.push('contextOwner');
+    if (!exactObject(input, keys) || !validRequestId(input.requestId)
       || typeof input.message !== 'string' || !input.message.trim() || [...input.message].length > QUESTION_MAX_CHARS
       || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(input.message)
       || typeof input.modelKey !== 'string' || !config.models.some(model => model.key === input.modelKey)) throw assistantError(400, 'invalid_question', '请提交500字符以内的问题、允许的模型和唯一请求编号。');
+    let history;
+    try { history = validateConversationHistory(input.history); }
+    catch (error) { throw assistantError(400, 'invalid_history', error.message); }
+    if ((history.length || Object.hasOwn(input, 'contextOwner')) && input.contextOwner !== contextOwner(memberId)) {
+      throw assistantError(409, 'context_owner_changed', '对话账户已变化或无法确认，请开启新对话并刷新登录后再试；未发送付费请求。');
+    }
     const message = input.message.trim();
-    const fingerprint = digest(JSON.stringify([input.modelKey, message]));
+    const fingerprint = digest(JSON.stringify(history.length ? [input.modelKey, message, history] : [input.modelKey, message]));
     const replay = previous(memberId, store.request(input.requestId, memberId, fingerprint));
     if (replay) return replay;
     const reason = readiness(memberId);
@@ -95,7 +106,7 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
     const model = config.models.find(item => item.key === input.modelKey);
     if (!model.enabled) throw assistantError(400, 'model_disabled', '此模型暂不可用。');
     store.throttle(`chat:${memberId}`, 10);
-    const { modelInput } = provider.payload(message, input.requestId, model);
+    const { modelInput } = provider.payload(message, input.requestId, model, history);
     const inputTokens = await provider.count(model, modelInput);
     if (stopping) throw assistantError(503, 'service_stopping', '服务正在停止，未发送付费请求。');
     const reservation = costMicros(model.prices, inputTokens, 0, model.maxOutputTokens);

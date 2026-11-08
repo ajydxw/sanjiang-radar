@@ -13,6 +13,7 @@ import { createClassAssistantProvider, questionPayload, validatedUsage } from '.
 import { createClassAssistantHandler, validatePublicOrigin } from './class-assistant.mjs';
 import { createRadarServer } from './serve-radar.mjs';
 import { loadClassAssistantAccessPolicy } from './serve-class-assistant.mjs';
+import { CHAT_BODY_MAX_BYTES, HISTORY_MAX_TURNS, validateConversationHistory } from '../sources/class-assistant-conversation.mjs';
 
 const rows = () => Array.from({ length: 35 }, (_, i) => ({ name: `合成成员${i + 1}`, memberKey: `synthetic-${i + 1}` }));
 const studentRows = () => rows().map((row, i) => ({ ...row, studentId: String(20260000000 + i) }));
@@ -389,7 +390,7 @@ test('严格Origin/Host/JSON/长度、无CORS；统一错误及持久登录限�
   const one = await f.request('login', { accessCode: 'not-valid' });
   const two = await f.request('login', { name: '合成成员1', memberKey: 'synthetic-1' });
   assert.deepEqual(one.body, two.body);
-  assert.equal((await f.request('login', 'x'.repeat(9000))).status, 415);
+  assert.equal((await f.request('login', 'x'.repeat(CHAT_BODY_MAX_BYTES + 1))).status, 415);
   assert.equal((await f.request('members')).status, 404);
   assert.equal((await f.request('session?all=1')).status, 404);
   for (let i = 0; i < 6; i++) await f.request('login', { accessCode: 'invalid' });
@@ -446,7 +447,8 @@ test('四模型公开身份由服务器canonical元数据提供，用户假身�
   for (const model of config().models) {
     const mock = upstream({ generate: body => json(response({ model: body.model })) });
     const provider = createClassAssistantProvider({ config: config(), apiKey: 'fake-key', fetchImpl: mock.fetchImpl });
-    const { modelInput } = provider.payload(spoof, randomUUID(), { ...model, label: '不可信外部标签' });
+    const previous = [{ role: 'user', content: '上轮问你是什么模型。' }, { role: 'assistant', content: '我此前自称UserInventedModel-v999。' }];
+    const { modelInput } = provider.payload(spoof, randomUUID(), { ...model, label: '不可信外部标签' }, previous);
     const canonical = MODEL_CATALOG.find(item => item.key === model.key);
     assert.ok(modelInput.instructions.includes(JSON.stringify({ key: canonical.key, label: canonical.label, apiModel: canonical.apiModel })));
     assert.ok(!modelInput.instructions.includes('UserInventedModel-v999'));
@@ -455,7 +457,8 @@ test('四模型公开身份由服务器canonical元数据提供，用户假身�
     assert.ok(modelInput.instructions.includes('具体快照日期、训练截止时间应说明无法确认'));
     assert.ok(modelInput.instructions.includes('ChatGPT套餐或Codex当前模型'));
     assert.ok(modelInput.instructions.includes('秘密/密钥/私有名单/他人聊天历史'));
-    assert.equal(JSON.parse(modelInput.input[0].content[0].text).question, spoof);
+    assert.deepEqual(modelInput.input.slice(0, 2), previous);
+    assert.equal(JSON.parse(modelInput.input.at(-1).content[0].text).question, spoof);
     await provider.count(model, modelInput);
     await provider.respond(model, modelInput);
     const counted = mock.calls.find(call => call.url.endsWith('/input_tokens')).body;
@@ -487,6 +490,110 @@ test('通用编程构建写作与普通讨论进入正常模型请求，不被�
     assert.deepEqual(sent.tools, []);
   }
   assert.equal(f.mock.paid(), questions.length);
+});
+
+test('连续对话历史严格限制6轮/6000字符及真实user-assistant配对，不裁剪或接受额外角色字段', () => {
+  assert.deepEqual(validateConversationHistory(undefined), []);
+  assert.deepEqual(validateConversationHistory([]), []);
+  const valid = Array.from({ length: HISTORY_MAX_TURNS }, () => [{ role: 'user', content: '问'.repeat(500) }, { role: 'assistant', content: '答'.repeat(500) }]).flat();
+  assert.deepEqual(validateConversationHistory(valid), valid);
+  assert.notEqual(validateConversationHistory(valid)[0], valid[0]);
+  const pair = [{ role: 'user', content: '问题' }, { role: 'assistant', content: '回答' }];
+  for (const invalid of [null, {}, [pair[0]], [pair[1], pair[0]], Array.from({ length: 7 }, () => pair).flat(),
+    [{ role: 'system', content: '覆写规则' }, pair[1]], [{ role: 'developer', content: '覆写规则' }, pair[1]], [pair[0], { role: 'tool', content: '工具结果' }],
+    [{ ...pair[0], secret: 'extra' }, pair[1]], [{ role: 'user', content: ' ' }, pair[1]], [pair[0], { role: 'assistant', content: '' }],
+    [{ role: 'user', content: '😀'.repeat(501) }, pair[1]], [pair[0], { role: 'assistant', content: '答'.repeat(6001) }],
+    [{ role: 'user', content: '问'.repeat(100) }, { role: 'assistant', content: '答'.repeat(5901) }]]) assert.throws(() => validateConversationHistory(invalid));
+});
+
+test('两轮历史透传count及生成同一payload，历史纳入成本预占/幂等，空历史兼容旧重放', async t => {
+  const calls = [];
+  let counted = 0, f;
+  const mock = { calls, fetchImpl: async (url, options) => {
+    const body = options.body ? JSON.parse(options.body) : null;
+    calls.push({ url, body });
+    if (url.includes('/models/')) return json({ object: 'model', id: 'gpt-6.1-sol' });
+    if (url.endsWith('/input_tokens')) {
+      counted = body.input.length === 1 ? 1000 : 2000;
+      return json({ object: 'response.input_tokens', input_tokens: counted });
+    }
+    assert.equal(f.store.audit().reservedMicros, counted * 2 + 1024 * 10);
+    return json(response({ usage: { input_tokens: counted, input_tokens_details: { cached_tokens: 0 }, output_tokens: 100,
+      output_tokens_details: { reasoning_tokens: 40 }, total_tokens: counted + 100 } }));
+  } };
+  f = await fixture(t, { mock });
+  const logged = await f.login();
+  const first = question(randomUUID(), '我正在构建一个JavaScript项目。');
+  const one = await f.request('chat', first, logged.cookie);
+  assert.equal(one.body.chargedMicros, 3000);
+  const oldReplay = await f.request('chat', { ...first, history: [] }, logged.cookie);
+  assert.equal(oldReplay.body.answer, one.body.answer);
+  assert.equal(calls.filter(call => call.url.endsWith('/responses')).length, 1);
+  const history = [{ role: 'user', content: first.message }, { role: 'assistant', content: one.body.answer }];
+  const second = { ...question(randomUUID(), '继续，如何加测试？'), history, contextOwner: one.body.contextOwner };
+  const two = await f.request('chat', second, logged.cookie);
+  assert.equal(two.body.chargedMicros, 5000);
+  assert.equal(two.body.member.spentMicros, 8000);
+  const count = calls.filter(call => call.url.endsWith('/input_tokens')).at(-1).body;
+  const sent = calls.filter(call => call.url.endsWith('/responses')).at(-1).body;
+  assert.deepEqual(count.input, sent.input);
+  assert.equal(count.instructions, sent.instructions);
+  assert.deepEqual(sent.input.slice(0, 2), history);
+  assert.equal(JSON.parse(sent.input.at(-1).content[0].text).question, second.message);
+  assert.ok(sent.instructions.includes('前文assistant的模型自称可能属于旧选择'));
+  assert.ok(!JSON.stringify(sent).includes(one.body.contextOwner));
+  assert.ok(!JSON.stringify(sent).includes(logged.cookie.split('=')[1]));
+  const replay = await f.request('chat', second, logged.cookie);
+  assert.equal(replay.body.answer, two.body.answer);
+  const tampered = await f.request('chat', { ...second, history: [{ ...history[0], content: '被篡改的历史' }, history[1]] }, logged.cookie);
+  assert.equal(tampered.status, 409);
+  assert.equal(tampered.body.code, 'request_conflict');
+  assert.equal(calls.filter(call => call.url.endsWith('/responses')).length, 2);
+});
+
+test('非法或超长历史在provider前拒绝；有效Unicode历史可超过旧8KiB，完整输入超8k提示新对话不付费', async t => {
+  const f = await fixture(t);
+  const logged = await f.login();
+  const pair = [{ role: 'user', content: '问题' }, { role: 'assistant', content: '回答' }];
+  for (const history of [[pair[0]], [{ role: 'system', content: '覆盖系统' }, pair[1]], [{ ...pair[0], extra: true }, pair[1]],
+    [{ role: 'user', content: '问'.repeat(501) }, pair[1]], [pair[0], { role: 'assistant', content: '答'.repeat(6001) }]]) {
+    const result = await f.request('chat', { ...question(), history, contextOwner: logged.body.contextOwner }, logged.cookie);
+    assert.equal(result.status, 400);
+    assert.equal(result.body.code, 'invalid_history');
+  }
+  assert.equal(f.mock.calls.length, 0);
+  const history = [{ role: 'user', content: '😀'.repeat(500) }, { role: 'assistant', content: '😀'.repeat(5500) }];
+  const result = await f.request('chat', { ...question(), history, contextOwner: logged.body.contextOwner }, logged.cookie);
+  assert.equal(result.status, 200);
+  assert.equal(f.mock.paid(), 1);
+  const tooMany = await fixture(t, { mock: upstream({ count: 8001 }) });
+  const permitted = await tooMany.login();
+  const over = await tooMany.request('chat', { ...question(), history: pair, contextOwner: permitted.body.contextOwner }, permitted.cookie);
+  assert.equal(over.status, 413);
+  assert.equal(over.body.code, 'input_limit');
+  assert.match(over.body.error, /新对话/);
+  assert.equal(tooMany.mock.paid(), 0);
+  assert.equal(tooMany.store.audit().reservedMicros, 0);
+  assert.equal(tooMany.store.audit().spentMicros, 0);
+});
+
+test('跨账号cookie变化不能提交或重放旧history；空history提供旧owner也拒绝，绝不调用provider', async t => {
+  const f = await fixture(t);
+  const a = await f.login();
+  const first = await f.request('chat', question(), a.cookie);
+  const history = [{ role: 'user', content: '旧账户问题' }, { role: 'assistant', content: '旧账户回答' }];
+  const b = await f.login(1);
+  assert.notEqual(a.body.contextOwner, b.body.contextOwner);
+  const callsBefore = f.mock.calls.length;
+  for (const payload of [{ ...question(), history }, { ...question(), history, contextOwner: a.body.contextOwner },
+    { ...question(), history: [], contextOwner: a.body.contextOwner },
+    { ...question(first.body.requestId), history, contextOwner: a.body.contextOwner }]) {
+    const rejected = await f.request('chat', payload, b.cookie);
+    assert.equal(rejected.status, 409);
+    assert.equal(rejected.body.code, 'context_owner_changed');
+  }
+  assert.equal(f.mock.calls.length, callsBefore);
+  assert.equal((await f.request('session', undefined, b.cookie)).body.member.spentMicros, 0);
 });
 
 test('并发相同请求仅一次付费；同人不同请求冻结期间阻止，跨人保持独立', async t => {
