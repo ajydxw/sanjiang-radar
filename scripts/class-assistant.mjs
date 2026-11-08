@@ -95,9 +95,7 @@ export function createClassAssistantHandler({ config, store, publicOrigin, apiKe
     const model = config.models.find(item => item.key === input.modelKey);
     if (!model.enabled) throw assistantError(400, 'model_disabled', '此模型暂不可用。');
     store.throttle(`chat:${memberId}`, 10);
-    const filtered = provider.filter(message);
-    if (filtered) return { ...session(memberId), answer: filtered, status: 'filtered', chargedMicros: 0, requestId: input.requestId };
-    const { modelInput } = provider.payload(message, input.requestId);
+    const { modelInput } = provider.payload(message, input.requestId, model);
     const inputTokens = await provider.count(model, modelInput);
     if (stopping) throw assistantError(503, 'service_stopping', '服务正在停止，未发送付费请求。');
     const reservation = costMicros(model.prices, inputTokens, 0, model.maxOutputTokens);
