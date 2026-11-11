@@ -1,7 +1,34 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-10T00:57:59.980Z",
+  "generatedAt": "2026-11-11T00:12:50.157Z",
   "items": [
+    {
+      "id": "exam-da330a537c280665",
+      "title": "江苏省2026年9月全国计算机等级考试成绩查询说明",
+      "category": "学校通知",
+      "summary": "2026年9月全国计算机等级考试成绩已发布，可在中国教育考试网查询成绩及电子证书，符合获证条件者可下载电子证书。对成绩有异议的考生须于2026年11月18日前向参考考点提交复查申请，逾期不受理。",
+      "source": "江苏省教育考试院 · 计算机等级考试",
+      "sourceType": "exam",
+      "sourcePortal": "https://www.jseea.cn/webfile/index/index_zkxx/2026-11-10/7525802486733475840.html",
+      "publishedAt": "2026-11-10",
+      "fetchedAt": "2026-11-11T00:12:49.059Z",
+      "freshmanAllowed": "unknown",
+      "colleges": [],
+      "eligibilityEvidence": null,
+      "rewardNote": "校内学分或奖励未核实，请查看学校认定要求。",
+      "importance": "normal",
+      "registrationMethod": "登录中国教育考试网查询成绩与电子证书；申请成绩复查时，填写原文附件申请表并于11月18日前提交参考考点。",
+      "registrationNote": "成绩查询、电子证书下载及成绩复查通知，不是新一轮考试报名；复查具体受理方式向参考考点确认。",
+      "verification": "考试官方原文",
+      "demo": false,
+      "manuallyVerified": true,
+      "detailRead": true,
+      "firstSeenAt": "2026-11-11T00:12:49.059Z",
+      "activityType": "考务",
+      "dateEvidence": [
+        "成绩复查申请须于2026年11月18日前向参考考点提出，逾期不予受理。"
+      ]
+    },
     {
       "id": "exam-6b0f152e04c2314f",
       "title": "2026年下半年全国大学英语四、六级考试报名通告",
@@ -11,7 +38,7 @@
       "sourceType": "exam",
       "sourcePortal": "https://www.jseea.cn/webfile/index/index_zkxx/2026-09-14/7505095415809708032.html",
       "publishedAt": "2026-09-14",
-      "fetchedAt": "2026-11-10T00:57:42.723Z",
+      "fetchedAt": "2026-11-11T00:12:46.637Z",
       "freshmanAllowed": "unknown",
       "colleges": [],
       "eligibilityEvidence": null,
@@ -37,7 +64,7 @@
       "sourceType": "exam",
       "sourcePortal": "https://www.jseea.cn/webfile/index/index_zkxx/2026-09-14/7505095415809708032.html",
       "publishedAt": "2026-09-14",
-      "fetchedAt": "2026-11-10T00:57:42.723Z",
+      "fetchedAt": "2026-11-11T00:12:46.637Z",
       "freshmanAllowed": "unknown",
       "colleges": [],
       "eligibilityEvidence": null,
@@ -62,7 +89,7 @@
       "sourceType": "exam",
       "sourcePortal": "https://www.jseea.cn/webfile/index/index_zkxx/2026-06-09/7470025101115658240.html",
       "publishedAt": "2026-06-09",
-      "fetchedAt": "2026-11-10T00:57:44.503Z",
+      "fetchedAt": "2026-11-11T00:12:47.605Z",
       "freshmanAllowed": "unknown",
       "colleges": [],
       "eligibilityEvidence": null,
@@ -86,7 +113,7 @@
       "sourceType": "exam",
       "sourcePortal": "https://www.jseea.cn/webfile/index/index_zkxx/2026-09-05/7502530758221762560.html",
       "publishedAt": "2026-09-05",
-      "fetchedAt": "2026-11-10T00:57:50.299Z",
+      "fetchedAt": "2026-11-11T00:12:50.151Z",
       "freshmanAllowed": "unknown",
       "colleges": [],
       "eligibilityEvidence": null,
@@ -162,10 +189,10 @@
       "sourceType": "exam",
       "state": "ok",
       "count": 3,
-      "lastAttemptAt": "2026-11-10T00:57:35.863Z",
-      "lastSuccessAt": "2026-11-10T00:57:44.511Z",
+      "lastAttemptAt": "2026-11-11T00:12:39.516Z",
+      "lastSuccessAt": "2026-11-11T00:12:47.610Z",
       "error": null,
-      "note": "省级安排，校内资格需核对三江通知；每小时检查两个最新办理通知，正文缓存6小时。已截止报名与后续考务分开展示。"
+      "note": "省级安排；本次检查两个最新办理通知并保留历史通知。成绩复查与报名截止分开说明，校内资格仍需核实。"
     },
     {
       "id": "js-ncre",
@@ -173,11 +200,11 @@
       "url": "https://www.jseea.cn/webfile/certificateexamination_ncre/ncre_information/",
       "sourceType": "exam",
       "state": "ok",
-      "count": 3,
-      "lastAttemptAt": "2026-11-10T00:57:44.512Z",
-      "lastSuccessAt": "2026-11-10T00:57:59.977Z",
+      "count": 4,
+      "lastAttemptAt": "2026-11-11T00:12:47.611Z",
+      "lastSuccessAt": "2026-11-11T00:12:50.155Z",
       "error": null,
-      "note": "省级安排，校内资格需核对三江通知；每小时检查两个最新办理通知，正文缓存6小时。已截止报名与后续考务分开展示。"
+      "note": "省级安排；本次检查两个最新办理通知并保留历史通知。成绩复查与报名截止分开说明，校内资格仍需核实。"
     }
   ]
 }
