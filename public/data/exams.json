@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-11T00:12:50.157Z",
+  "generatedAt": "2026-11-12T01:02:19.235Z",
   "items": [
     {
       "id": "exam-da330a537c280665",
@@ -187,24 +187,24 @@
       "name": "江苏省教育考试院 · 四六级",
       "url": "https://www.jseea.cn/webfile/certificateexamination_cet/cet_information/",
       "sourceType": "exam",
-      "state": "ok",
+      "state": "partial",
       "count": 3,
-      "lastAttemptAt": "2026-11-11T00:12:39.516Z",
-      "lastSuccessAt": "2026-11-11T00:12:47.610Z",
-      "error": null,
-      "note": "省级安排；本次检查两个最新办理通知并保留历史通知。成绩复查与报名截止分开说明，校内资格仍需核实。"
+      "lastAttemptAt": "2026-11-12T01:02:19.235Z",
+      "lastSuccessAt": "2026-11-12T01:02:19.235Z",
+      "error": "采集脚本返回 HTTP 403；本次通过官方公开网页核对栏目及两个最新办理通知，保留已有正文快照。",
+      "note": "省级安排；本次核验官方栏目及最新办理通知，未发现新增或内容变化。历史通知与校内资格核验范围不变。"
     },
     {
       "id": "js-ncre",
       "name": "江苏省教育考试院 · 计算机等级考试",
       "url": "https://www.jseea.cn/webfile/certificateexamination_ncre/ncre_information/",
       "sourceType": "exam",
-      "state": "ok",
+      "state": "partial",
       "count": 4,
-      "lastAttemptAt": "2026-11-11T00:12:47.611Z",
-      "lastSuccessAt": "2026-11-11T00:12:50.155Z",
-      "error": null,
-      "note": "省级安排；本次检查两个最新办理通知并保留历史通知。成绩复查与报名截止分开说明，校内资格仍需核实。"
+      "lastAttemptAt": "2026-11-12T01:02:19.235Z",
+      "lastSuccessAt": "2026-11-12T01:02:19.235Z",
+      "error": "采集脚本返回 HTTP 403；本次通过官方公开网页核对栏目及两个最新办理通知，保留已有正文快照。",
+      "note": "省级安排；本次核验官方栏目及最新办理通知，未发现新增或内容变化。历史通知与校内资格核验范围不变。"
     }
   ]
 }
