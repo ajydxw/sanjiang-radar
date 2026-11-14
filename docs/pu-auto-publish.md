@@ -1,6 +1,6 @@
 # PU 活动自动发布
 
-Windows 任务 `SanjiangRadar-PU-AutoPublish` 在当前用户登录时运行一次，之后每 30 分钟检查。电脑需保持开机、联网，Windows 用户需处于登录状态。采集使用同级 `sanjiang-radar` 项目中已有的 PU 官方登录会话。
+Windows 任务 `SanjiangRadar-PU-AutoPublish` 每天上午 09:00（电脑当地时间，当前为北京时间）采集并发布一次，不再每 30 分钟运行或每次登录都运行。错过计划时间时，任务计划程序会在条件允许后补跑。安装脚本只更新计划，不立即额外采集。电脑需保持开机、联网，Windows 用户需处于登录状态。采集使用同级 `sanjiang-radar` 项目中已有的 PU 官方登录会话。
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-pu-sync-startup.ps1
