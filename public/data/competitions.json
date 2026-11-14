@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-13T00:19:33.968772Z",
+  "generatedAt": "2026-11-14T00:31:22.486Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -33,7 +33,7 @@
           "url": "https://www.cms.org.cn/upload/file/20260702/1782964399222501.pdf"
         }
       ],
-      "fetchedAt": "2026-11-13T00:19:33.968772Z",
+      "fetchedAt": "2026-11-14T00:31:22.486Z",
       "firstSeenAt": "2026-10-10T04:49:20.653Z",
       "registrationDeadline": "2026-10-19"
     },
@@ -63,7 +63,7 @@
         "赛将于10月21~22日在四川成都举办，报名时间为2026年9月9日-10月11日。 中国计算机学会大学生"
       ],
       "attachments": [],
-      "fetchedAt": "2026-11-13T00:17:30.133Z",
+      "fetchedAt": "2026-11-14T00:28:44.779Z",
       "firstSeenAt": "2026-10-10T04:49:21.882Z"
     },
     {
@@ -92,7 +92,7 @@
         "职业院校组或自行选择任意组别 报名时间 报名时间：2026年10月8日10:00—2026年12月18日14:00 报名须知 人数及方式"
       ],
       "attachments": [],
-      "fetchedAt": "2026-11-13T00:17:39.887Z",
+      "fetchedAt": "2026-11-14T00:28:51.168Z",
       "firstSeenAt": "2026-10-10T04:49:25.064Z"
     },
     {
@@ -214,7 +214,7 @@
           "url": "https://sanchuang-bodao.oss-cn-hangzhou.aliyuncs.com/system/2026-11-03/2117518848162500608_20261028%20%20%20%E7%AC%AC17%E5%B1%8A%E4%B8%89%E5%88%9B%E8%B5%9B%E7%AB%9E%E8%B5%9B%E8%A7%84%E5%88%99.pdf"
         }
       ],
-      "fetchedAt": "2026-11-13T00:19:33.968772Z",
+      "fetchedAt": "2026-11-14T00:31:22.486Z",
       "firstSeenAt": "2026-11-08T00:21:30.826Z"
     }
   ],
@@ -226,10 +226,10 @@
       "sourceType": "competition",
       "state": "partial",
       "count": 1,
-      "lastSuccessAt": "2026-11-13T00:19:33.968772Z",
+      "lastSuccessAt": "2026-11-14T00:31:22.486Z",
       "note": "全国报名已截止，11月14日初赛；校内安排另行核实。",
-      "error": "栏目返回 HTTP 503、详情页404；已核验原官方PDF。",
-      "lastAttemptAt": "2026-11-13T00:19:33.968772Z"
+      "error": "栏目及详情页返回HTTP 404；已核验原官方PDF。",
+      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
     },
     {
       "id": "competition-ccsp",
@@ -238,10 +238,10 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-13T00:17:32.622Z",
+      "lastSuccessAt": "2026-11-14T00:28:47.075Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
       "error": null,
-      "lastAttemptAt": "2026-11-13T00:19:33.968772Z"
+      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
     },
     {
       "id": "competition-lanqiao",
@@ -250,10 +250,10 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-13T00:17:39.932Z",
+      "lastSuccessAt": "2026-11-14T00:28:51.172Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
       "error": null,
-      "lastAttemptAt": "2026-11-13T00:19:33.968772Z"
+      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
     },
     {
       "id": "competition-design",
@@ -264,8 +264,8 @@
       "count": 1,
       "lastSuccessAt": "2026-11-12T01:00:27.235Z",
       "note": "保留上次成功记录和时间，不视为本轮已刷新。",
-      "error": "动态页面无法读取：本轮浏览器未能启动。",
-      "lastAttemptAt": "2026-11-13T00:19:33.968772Z"
+      "error": "动态页面无法读取：本轮采集浏览器不可用。",
+      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
     },
     {
       "id": "competition-english",
@@ -276,8 +276,8 @@
       "count": 1,
       "lastSuccessAt": "2026-11-12T00:59:58.842Z",
       "note": "保留上次成功记录和时间，不视为本轮已刷新。",
-      "error": "动态页面无法读取：本轮浏览器未能启动。",
-      "lastAttemptAt": "2026-11-13T00:19:33.968772Z"
+      "error": "动态页面无法读取：本轮采集浏览器不可用。",
+      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
     },
     {
       "id": "competition-sanchuang",
@@ -286,10 +286,10 @@
       "sourceType": "competition",
       "state": "partial",
       "count": 2,
-      "lastSuccessAt": "2026-11-13T00:19:33.968772Z",
+      "lastSuccessAt": "2026-11-14T00:31:22.486Z",
       "note": "仅核验已知当前届次通知，不代表全站更新已检查。",
-      "error": "已复核第十七届报名通知PDF；动态首页未读，校内备案及历史届次未核实。",
-      "lastAttemptAt": "2026-11-13T00:19:33.968772Z"
+      "error": "已复核第十七届报名通知及规则PDF；动态首页未读，校内备案及历史届次未核实。",
+      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
     }
   ]
 }

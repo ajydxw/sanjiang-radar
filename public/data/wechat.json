@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-13T00:19:33.968772Z",
+  "generatedAt": "2026-11-14T00:31:22.486Z",
   "items": [
     {
       "id": "wechat-a88c5e10690ab5eb",
@@ -34,9 +34,9 @@
       "count": 1,
       "lastSuccessAt": "2026-10-30T04:52:26.130Z",
       "note": "文章链接导入已接通；仅保留有用的信息摘要与原文链接。自动发现新推文尚未配置。",
-      "error": "公众号原文暂不可读，保留上次成功快照。",
+      "error": "公众号原文返回不可用页面，保留上次成功快照。",
       "discoveryMode": "article-links",
-      "lastAttemptAt": "2026-11-13T00:19:33.968772Z"
+      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
     }
   ]
 }
