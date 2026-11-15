@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-14T00:31:22.486Z",
+  "generatedAt": "2026-11-15T00:51:58.915Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -14,9 +14,9 @@
       "eligibilityEvidence": "所有全日制在校大学生",
       "eventStart": "2026-11-14",
       "eventEnd": "2026-11-14",
-      "summary": "报名已截止：全国通知要求于2026年10月19日前按所在赛区规定报名；三江校内截止尚未核实，可能更早。初赛定于11月14日，已报名考生请关注学校后续安排，本条不是新开放报名机会。",
+      "summary": "报名期及原定11月14日初赛时间均已过。保留历史通知供查询；后续决赛等安排以主办方和学校最新通知为准，本条不是新开放报名机会。",
       "registrationNote": "全国通知原文为“2026年10月19日前”报名。日期字段仅按日记录全国要求，用于判断已经截止，不代表可报名至19日当天结束，也不替代三江校内截止；具体时刻及本校安排未核实。",
-      "registrationMethod": "全国报名期已过。已报名考生按所在赛区及学校安排参加11月14日初赛；是否存在其他办理事项须向学校确认，不视为仍可补报名。",
+      "registrationMethod": "全国报名期及原定初赛时间已过。已参赛考生请关注所在赛区、学校及主办方后续通知，不视为仍可补报名。",
       "colleges": [],
       "rewardNote": "赛事证书、奖项及费用以官方规则为准；三江学分、积分认定尚未核验。",
       "importance": "normal",
@@ -33,7 +33,7 @@
           "url": "https://www.cms.org.cn/upload/file/20260702/1782964399222501.pdf"
         }
       ],
-      "fetchedAt": "2026-11-14T00:31:22.486Z",
+      "fetchedAt": "2026-11-15T00:50:36.957Z",
       "firstSeenAt": "2026-10-10T04:49:20.653Z",
       "registrationDeadline": "2026-10-19"
     },
@@ -63,7 +63,7 @@
         "赛将于10月21~22日在四川成都举办，报名时间为2026年9月9日-10月11日。 中国计算机学会大学生"
       ],
       "attachments": [],
-      "fetchedAt": "2026-11-14T00:28:44.779Z",
+      "fetchedAt": "2026-11-15T00:49:18.469Z",
       "firstSeenAt": "2026-10-10T04:49:21.882Z"
     },
     {
@@ -92,7 +92,7 @@
         "职业院校组或自行选择任意组别 报名时间 报名时间：2026年10月8日10:00—2026年12月18日14:00 报名须知 人数及方式"
       ],
       "attachments": [],
-      "fetchedAt": "2026-11-14T00:28:51.168Z",
+      "fetchedAt": "2026-11-15T00:49:24.776Z",
       "firstSeenAt": "2026-10-10T04:49:25.064Z"
     },
     {
@@ -214,7 +214,7 @@
           "url": "https://sanchuang-bodao.oss-cn-hangzhou.aliyuncs.com/system/2026-11-03/2117518848162500608_20261028%20%20%20%E7%AC%AC17%E5%B1%8A%E4%B8%89%E5%88%9B%E8%B5%9B%E7%AB%9E%E8%B5%9B%E8%A7%84%E5%88%99.pdf"
         }
       ],
-      "fetchedAt": "2026-11-14T00:31:22.486Z",
+      "fetchedAt": "2026-11-15T00:50:51.959Z",
       "firstSeenAt": "2026-11-08T00:21:30.826Z"
     }
   ],
@@ -226,10 +226,10 @@
       "sourceType": "competition",
       "state": "partial",
       "count": 1,
-      "lastSuccessAt": "2026-11-14T00:31:22.486Z",
-      "note": "全国报名已截止，11月14日初赛；校内安排另行核实。",
+      "lastSuccessAt": "2026-11-15T00:50:36.957Z",
+      "note": "全国报名期及原定11月14日初赛时间均已过；后续安排以官方最新通知为准。",
       "error": "栏目及详情页返回HTTP 404；已核验原官方PDF。",
-      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
+      "lastAttemptAt": "2026-11-15T00:50:36.957Z"
     },
     {
       "id": "competition-ccsp",
@@ -238,10 +238,10 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-14T00:28:47.075Z",
+      "lastSuccessAt": "2026-11-15T00:49:20.784Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
       "error": null,
-      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
+      "lastAttemptAt": "2026-11-15T00:49:20.784Z"
     },
     {
       "id": "competition-lanqiao",
@@ -250,10 +250,10 @@
       "sourceType": "competition",
       "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-14T00:28:51.172Z",
+      "lastSuccessAt": "2026-11-15T00:49:24.781Z",
       "note": "含已截止历史记录；首页优先展示近期机会，校内安排另行核验。",
       "error": null,
-      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
+      "lastAttemptAt": "2026-11-15T00:49:24.781Z"
     },
     {
       "id": "competition-design",
@@ -265,7 +265,7 @@
       "lastSuccessAt": "2026-11-12T01:00:27.235Z",
       "note": "保留上次成功记录和时间，不视为本轮已刷新。",
       "error": "动态页面无法读取：本轮采集浏览器不可用。",
-      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
+      "lastAttemptAt": "2026-11-15T00:49:46.198Z"
     },
     {
       "id": "competition-english",
@@ -277,7 +277,7 @@
       "lastSuccessAt": "2026-11-12T00:59:58.842Z",
       "note": "保留上次成功记录和时间，不视为本轮已刷新。",
       "error": "动态页面无法读取：本轮采集浏览器不可用。",
-      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
+      "lastAttemptAt": "2026-11-15T00:49:50.324Z"
     },
     {
       "id": "competition-sanchuang",
@@ -286,10 +286,10 @@
       "sourceType": "competition",
       "state": "partial",
       "count": 2,
-      "lastSuccessAt": "2026-11-14T00:31:22.486Z",
+      "lastSuccessAt": "2026-11-15T00:50:52.609Z",
       "note": "仅核验已知当前届次通知，不代表全站更新已检查。",
       "error": "已复核第十七届报名通知及规则PDF；动态首页未读，校内备案及历史届次未核实。",
-      "lastAttemptAt": "2026-11-14T00:31:22.486Z"
+      "lastAttemptAt": "2026-11-15T00:50:47.668Z"
     }
   ]
 }
