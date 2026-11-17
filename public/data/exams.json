@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-16T00:14:57.098Z",
+  "generatedAt": "2026-11-17T00:26:41.723Z",
   "items": [
     {
       "id": "exam-da330a537c280665",
@@ -187,24 +187,24 @@
       "name": "江苏省教育考试院 · 四六级",
       "url": "https://www.jseea.cn/webfile/certificateexamination_cet/cet_information/",
       "sourceType": "exam",
-      "state": "ok",
+      "state": "failed",
       "count": 3,
-      "lastAttemptAt": "2026-11-16T00:14:44.156Z",
+      "lastAttemptAt": "2026-11-17T00:26:21.697Z",
       "lastSuccessAt": "2026-11-16T00:14:54.476Z",
-      "error": null,
-      "note": "省级安排，校内资格需核对三江通知；每小时检查两个最新办理通知，正文缓存6小时。已截止报名与后续考务分开展示。"
+      "error": "本轮栏目及已知通知正文返回 HTTP 403 或请求超时；保留上次成功快照。",
+      "note": "省级安排，校内资格需核对三江通知；每小时检查两个最新办理通知，正文缓存6小时。已截止报名与后续考务分开展示。 本轮读取失败，不代表没有新通知。"
     },
     {
       "id": "js-ncre",
       "name": "江苏省教育考试院 · 计算机等级考试",
       "url": "https://www.jseea.cn/webfile/certificateexamination_ncre/ncre_information/",
       "sourceType": "exam",
-      "state": "ok",
+      "state": "failed",
       "count": 2,
-      "lastAttemptAt": "2026-11-16T00:14:54.477Z",
+      "lastAttemptAt": "2026-11-17T00:26:14.238Z",
       "lastSuccessAt": "2026-11-16T00:14:57.093Z",
-      "error": null,
-      "note": "省级安排，校内资格需核对三江通知；每小时检查两个最新办理通知，正文缓存6小时。已截止报名与后续考务分开展示。"
+      "error": "本轮栏目及已知通知正文返回 HTTP 403 或请求超时；保留上次成功快照。",
+      "note": "省级安排，校内资格需核对三江通知；每小时检查两个最新办理通知，正文缓存6小时。已截止报名与后续考务分开展示。 本轮读取失败，不代表没有新通知。"
     }
   ]
 }
