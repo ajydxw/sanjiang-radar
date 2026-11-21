@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-21T02:37:41.738Z",
+  "generatedAt": "2026-11-21T09:21:06.681Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -242,7 +242,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:37:22.380Z"
+      "fetchedAt": "2026-11-21T09:20:17.503Z"
     },
     {
       "id": "competition-tianchi-532510",
@@ -269,7 +269,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:37:22.380Z"
+      "fetchedAt": "2026-11-21T09:20:17.503Z"
     },
     {
       "id": "competition-tianchi-532515",
@@ -296,7 +296,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:37:22.380Z"
+      "fetchedAt": "2026-11-21T09:20:17.503Z"
     },
     {
       "id": "competition-tianchi-532532",
@@ -323,7 +323,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:37:22.380Z"
+      "fetchedAt": "2026-11-21T09:20:17.503Z"
     },
     {
       "id": "competition-modelscope-394",
@@ -355,7 +355,7 @@
         }
       ],
       "firstSeenAt": "2026-11-21T02:31:22.486Z",
-      "fetchedAt": "2026-11-21T02:37:34.599Z"
+      "fetchedAt": "2026-11-21T09:20:53.771Z"
     },
     {
       "id": "competition-modelscope-421",
@@ -387,7 +387,7 @@
         }
       ],
       "firstSeenAt": "2026-11-21T02:31:22.486Z",
-      "fetchedAt": "2026-11-21T02:37:34.599Z"
+      "fetchedAt": "2026-11-21T09:20:53.771Z"
     },
     {
       "id": "competition-aidaxue-cyber-maker-2026",
@@ -492,10 +492,10 @@
       "name": "阿里云天池",
       "url": "https://tianchi.aliyun.com/competition/",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-21T02:37:17.455Z",
+      "lastAttemptAt": "2026-11-21T09:20:08.027Z",
       "state": "ok",
       "count": 4,
-      "lastSuccessAt": "2026-11-21T02:37:22.380Z",
+      "lastSuccessAt": "2026-11-21T09:20:17.503Z",
       "error": null
     },
     {
@@ -504,23 +504,23 @@
       "url": "https://modelscope.cn/events",
       "note": "检查赛事首页和已收录的在报项目，读取官方参赛规则。",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-21T02:37:22.380Z",
+      "lastAttemptAt": "2026-11-21T09:20:17.503Z",
       "state": "ok",
       "count": 2,
-      "lastSuccessAt": "2026-11-21T02:37:34.599Z",
+      "lastSuccessAt": "2026-11-21T09:20:53.771Z",
       "error": null
     },
     {
       "id": "competition-aidaxue",
       "name": "讯飞 AI 大学堂",
       "url": "https://www.aidaxue.com/activity/cyber-maker",
-      "note": "定时核对校园 AI 微应用挑战赛的官方活动页。",
+      "note": "本次读取失败，保留上次快照。",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-21T02:37:34.599Z",
-      "state": "ok",
+      "lastAttemptAt": "2026-11-21T09:20:53.771Z",
+      "state": "failed",
       "count": 1,
       "lastSuccessAt": "2026-11-21T02:37:41.738Z",
-      "error": null
+      "error": "page.goto: net::ERR_CONNECTION_CLOSED at https://www.aidaxue.com/activity/cyber-maker\nCall log:\n\u001b[2m  - navigating to \"https://www.aidaxue.com/activity/cyber-maker\", waiting until \"domcontentloaded\"\u001b[22m\n"
     }
   ]
 }
