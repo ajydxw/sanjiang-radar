@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-21T02:04:38.124Z",
+  "generatedAt": "2026-11-21T02:13:16.916Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -242,7 +242,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:04:38.124Z"
+      "fetchedAt": "2026-11-21T02:13:16.916Z"
     },
     {
       "id": "competition-tianchi-532510",
@@ -269,7 +269,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:04:38.124Z"
+      "fetchedAt": "2026-11-21T02:13:16.916Z"
     },
     {
       "id": "competition-tianchi-532515",
@@ -296,7 +296,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:04:38.124Z"
+      "fetchedAt": "2026-11-21T02:13:16.916Z"
     },
     {
       "id": "competition-tianchi-532532",
@@ -323,7 +323,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:04:38.124Z"
+      "fetchedAt": "2026-11-21T02:13:16.916Z"
     }
   ],
   "sources": [
@@ -404,10 +404,10 @@
       "name": "阿里云天池",
       "url": "https://tianchi.aliyun.com/competition/",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-21T02:04:31.242Z",
+      "lastAttemptAt": "2026-11-21T02:13:10.554Z",
       "state": "ok",
       "count": 4,
-      "lastSuccessAt": "2026-11-21T02:04:38.124Z",
+      "lastSuccessAt": "2026-11-21T02:13:16.916Z",
       "error": null,
       "note": "检查天池公开报名列表的 AI 大模型、数据算法与工程开发赛事。"
     }
