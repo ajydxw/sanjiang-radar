@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { staleOwner, validateSnapshot, verifyDeployment } from './sync-pu-to-pages.mjs';
+import { staleOwner, validateCompetitionSnapshot, validateSnapshot, verifyDeployment } from './sync-pu-to-pages.mjs';
 
 const timestamp = '2026-11-14T04:00:00.000Z';
 const startedAt = Date.parse(timestamp);
@@ -36,6 +36,18 @@ test('lock takeover requires ESRCH or an owner timestamp before this boot', () =
   assert.equal(staleOwner(owner, startedAt - 1, unavailable), false);
   assert.equal(staleOwner({ pid: -1, createdAt: timestamp }, startedAt + 1, missing), false);
   assert.equal(staleOwner({ pid: 1234 }, startedAt + 1, missing), false);
+});
+
+test('publishes competition data only after a fresh Tianchi check', () => {
+  const source = { id: 'competition-tianchi', sourceType: 'competition', name: '阿里云天池', url: 'https://tianchi.aliyun.com/competition/',
+    state: 'ok', count: 0, lastSuccessAt: timestamp };
+  const snapshot = { ...feed, sources: [source] };
+  assert.deepEqual(validateCompetitionSnapshot(pack(snapshot), startedAt, startedAt + 1), snapshot);
+  assert.throws(() => validateCompetitionSnapshot(bytes, startedAt, startedAt + 1), /feed-invalid/);
+  assert.throws(() => validateCompetitionSnapshot(pack(snapshot), startedAt + 1), /collection-not-fresh/);
+  for (const update of [{ id: 'other' }, { state: 'failed' }, { lastSuccessAt: '2026-11-13T08:00:00Z' }]) {
+    assert.throws(() => validateCompetitionSnapshot(pack({ ...snapshot, sources: [{ ...source, ...update }] }), startedAt, startedAt + 1), /collection-incomplete/);
+  }
 });
 
 const commit = 'b'.repeat(40);

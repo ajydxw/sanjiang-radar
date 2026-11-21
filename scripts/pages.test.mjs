@@ -18,6 +18,10 @@ const fixtureItems = [0, 1].map(index => ({
   freshmanAllowed: 'allowed', colleges: [], importance: 'high', rewardNote: '奖励未明确',
   registrationMethod: '查看官方原文', verification: '测试', demo: false,
 }));
+const competitionFixture = { ...fixtureItems[0], id: 'tianchi-test', title: '实战应用挑战赛', category: '竞赛',
+  source: '阿里云天池', sourceType: 'competition', sourcePortal: 'https://tianchi.aliyun.com/competition/', activityType: 'AI大模型赛' };
+const schoolCompetitionFixture = { ...competitionFixture, id: 'school-competition-test', title: '三江学院校内摄影赛',
+  source: '三江学院', sourceType: 'school', sourcePortal: 'https://www.sju.edu.cn/', activityType: '比赛', registrationDeadline: '2026-11-22' };
 
 async function setup(t) {
   const errors = [], api = [], crossSiteApi = [], badResponses = [];
@@ -45,7 +49,10 @@ async function setup(t) {
     });
     if (fixture) await context.route('**/data/*.json', route => route.fulfill({ json: {
       schemaVersion: 1, generatedAt: '2026-10-29T08:00:00+08:00',
-      items: route.request().url().endsWith('pu.json') ? fixtureItems : [], sources: [],
+      items: route.request().url().endsWith('pu.json') ? fixtureItems
+        : fixture === 'competitions' && route.request().url().endsWith('competitions.json') ? [competitionFixture, {
+          ...competitionFixture, id: 'expired-competition-test', title: '已结束的算法赛', registrationDeadline: '2026-10-28',
+        }] : fixture === 'competitions' && route.request().url().endsWith('sanjiang-web.json') ? [schoolCompetitionFixture] : [], sources: [],
     } }));
     if (blockedStorage) await context.addInitScript(() => {
       Storage.prototype.getItem = Storage.prototype.setItem = () => { throw new DOMException('Storage blocked', 'SecurityError'); };
@@ -68,7 +75,13 @@ async function setup(t) {
   }
   return { visitor };
 }
-const nav = (page, label) => page.getByRole('navigation', { name: '手机主导航' }).getByRole('button', { name: new RegExp(`^${label}`) }).click();
+async function nav(page, label) {
+  const name = new RegExp(`^${label}`);
+  const mobile = page.getByRole('navigation', { name: '手机主导航' });
+  const button = mobile.getByRole('button', { name });
+  await button.click();
+  await button.and(mobile.locator('[aria-current="page"]')).waitFor();
+}
 
 test('Pages 子路径读取真实快照、无后端请求、手机桌面布局', async t => {
   const { visitor } = await setup(t);
@@ -113,6 +126,31 @@ test('搜索、收藏刷新持久化、浏览器隔离、日历与到期自动�
   assert.equal(await a.locator('.results-grid .event-card').count(), 2);
   await a.getByRole('button', { name: `取消收藏：${fixtureItems[0].title}`, exact: true }).click();
   assert.equal(await a.locator('.results-grid .event-card').count(), 1);
+});
+
+test('竞赛专区直达 AI 实战，并支持校内筛选和导出截止提醒', async t => {
+  const { visitor } = await setup(t);
+  const page = await visitor({ fixture: 'competitions', hash: 'competitions', welcome: true });
+  const cards = page.locator('.results-grid .event-card');
+  await cards.first().waitFor();
+  assert.equal(await page.getByRole('dialog').count(), 0);
+  assert.equal(await cards.count(), 1);
+  assert.ok(await cards.first().getByText(competitionFixture.title, { exact: true }).isVisible());
+  assert.equal(await cards.first().locator('time').getAttribute('datetime'), competitionFixture.registrationDeadline);
+  await page.getByRole('button', { name: '校内赛事', exact: true }).click();
+  assert.equal(await cards.count(), 1);
+  assert.ok(await cards.first().getByText(schoolCompetitionFixture.title, { exact: true }).isVisible());
+  await page.getByRole('button', { name: '7 天内截止', exact: true }).click();
+  assert.equal(await cards.count(), 1);
+  await cards.first().getByRole('heading', { name: competitionFixture.title }).click();
+  const detail = page.getByRole('dialog');
+  assert.equal(await detail.getByRole('link', { name: '查看官方原文' }).getAttribute('href'), competitionFixture.sourcePortal);
+  await detail.getByRole('button', { name: '收藏并设置提醒', exact: true }).click();
+  const download = page.waitForEvent('download');
+  await detail.getByRole('button', { name: '下载这条信息的日历提醒', exact: true }).click();
+  const calendar = await readFile(await (await download).path(), 'utf8');
+  assert.match(calendar, /DTSTART:20261030T100000Z/);
+  assert.match(calendar, /BEGIN:VALARM/);
 });
 
 test('禁用浏览器存储时仍能浏览并提示收藏仅本次有效', async t => {
@@ -222,7 +260,7 @@ test('跳过开屏、减少动态与深链直达', async t => {
   assert.ok(await dialog.getByRole('button', { name: '直接浏览', exact: true }).isVisible());
   await dialog.getByRole('button', { name: '跳过开屏' }).click();
   assert.equal(await dialog.count(), 0);
-  for (const hash of ['profile', 'discover', 'saved']) {
+  for (const hash of ['profile', 'discover', 'competitions', 'saved']) {
     const deep = await visitor({ hash, welcome: true });
     assert.equal(await deep.getByRole('dialog').count(), 0, hash);
     assert.equal(new URL(deep.url()).hash, '#' + hash);

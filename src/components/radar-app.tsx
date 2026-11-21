@@ -1,8 +1,8 @@
 "use client";
 
-import { startTransition, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { ArrowRight, Check, ChevronRight, CircleHelp, Clock3, Compass, ExternalLink, GraduationCap, Heart, HeartHandshake, Radar, Search, SlidersHorizontal, Sparkles, UserRound, X } from "lucide-react";
-import { CATEGORIES, COLLEGES, chinaDateKey, deadlineLabel, deadlineTime, eligibilityLabel, formatDate, informationTime, isExamInformation, isOpen, matchesCollege, registrationStatus, rewardLabel, type Category, type Information, type SchoolFeed } from "@/lib/information";
+import { startTransition, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { ArrowRight, Check, ChevronRight, CircleHelp, Clock3, Compass, ExternalLink, GraduationCap, Heart, HeartHandshake, Radar, Search, SlidersHorizontal, Sparkles, Trophy, UserRound, X } from "lucide-react";
+import { CATEGORIES, COLLEGES, chinaDateKey, competitionClosingSoon, deadlineLabel, deadlineTime, eligibilityLabel, formatDate, informationTime, isAiCompetition, isCompetitionOpportunity, isExamInformation, isOpen, matchesCollege, registrationStatus, rewardLabel, type Category, type Information, type SchoolFeed } from "@/lib/information";
 import { assertPublicFeed } from '../../sources/public-feed.mjs';
 import { useVisitHistory } from './use-visit-history';
 import ActivityReminders, { ReminderSettings } from './activity-reminders';
@@ -14,7 +14,7 @@ import { WELCOME_STORAGE_KEY, callName, shouldShowWelcome } from '@/lib/welcome'
 import { changeProfileCollege } from '@/lib/college-majors';
 import { REMINDER_STORAGE_KEY, readReminderPreferences, getReminderOptions, buildReminderEvents, createReminderCalendar, type ReminderPreferences, type ReminderOptions } from '@/lib/activity-reminders';
 
-type Tab = "radar" | "discover" | "saved" | "profile";
+type Tab = "radar" | "discover" | "competitions" | "saved" | "profile";
 type Profile = { college: string; major: string; interests: Category[] };
 type Filters = { freshman: boolean; reward: boolean; soon: boolean; college: boolean; available: boolean; exam: boolean; new: boolean };
 type SavedState = { favorites: string[]; profile: Profile };
@@ -26,9 +26,17 @@ const FEED_PATHS = ["/data/sanjiang-web.json", "/data/pu.json", "/data/wechat.js
 const TABS = [
   { key: "radar" as Tab, label: "今日雷达", icon: Radar },
   { key: "discover" as Tab, label: "发现", icon: Compass },
+  { key: "competitions" as Tab, label: "竞赛", icon: Trophy },
   { key: "saved" as Tab, label: "收藏", icon: Heart },
   { key: "profile" as Tab, label: "我的", icon: UserRound },
 ];
+const COMPETITION_FILTERS = [
+  { key: "ai", label: "AI 实战" },
+  { key: "all", label: "全部赛事" },
+  { key: "campus", label: "校内赛事" },
+  { key: "soon", label: "7 天内截止" },
+  { key: "new", label: "新收集" },
+] as const;
 
 function CategoryIcon({ category, size = 20 }: { category: Category; size?: number }) {
   const Icon = category === "竞赛" ? Sparkles : category === "志愿活动" ? HeartHandshake : category === "学校通知" ? GraduationCap : category === "校园资讯" ? Compass : Radar;
@@ -147,7 +155,7 @@ function MobileNav({ tab, count, onNavigate, onPreview, onRelease }: { tab: Tab;
     onRelease(target === null ? null : TABS[target].key, current.moved && !current.cancelled);
   }
 
-  return <nav ref={nav} className={`mobile-nav${dragPosition !== null ? " is-pressed" : ""}${gesture.current?.moved && !gesture.current.cancelled ? " is-dragging" : ""}`} aria-label="手机主导航"
+  return <nav ref={nav} style={{ "--nav-tabs": TABS.length } as CSSProperties} className={`mobile-nav${dragPosition !== null ? " is-pressed" : ""}${gesture.current?.moved && !gesture.current.cancelled ? " is-dragging" : ""}`} aria-label="手机主导航"
     onPointerDown={beginGesture} onPointerMove={moveGesture} onPointerUp={event => finishGesture(event, true)}
     onPointerCancel={event => finishGesture(event, false)} onLostPointerCapture={event => finishGesture(event, false)}
     onContextMenu={event => event.preventDefault()}
@@ -235,6 +243,7 @@ export default function RadarApp() {
   const [loaded, setLoaded] = useState(false);
   const [storageError, setStorageError] = useState(false);
   const [category, setCategory] = useState<Category | "全部">("全部");
+  const [competitionFilter, setCompetitionFilter] = useState<typeof COMPETITION_FILTERS[number]["key"]>("ai");
   const [filters, setFilters] = useState<Filters>({ freshman: false, reward: false, soon: false, college: true, available: true, exam: false, new: false });
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("latest");
@@ -385,7 +394,20 @@ export default function RadarApp() {
   const creditCount = rewarded.filter(item => item.reward?.kind === "PU积分" || item.reward?.kind === "素质学分").length;
   const featured = relevant.filter(item => item.importance !== "secondary" && !isExamInformation(item)).sort((a, b) => Number(b.freshmanAllowed === "allowed") - Number(a.freshmanAllowed === "allowed") || Number(b.importance === "high") - Number(a.importance === "high") || informationTime(b).localeCompare(informationTime(a))).slice(0, 4);
   const exams = relevant.filter(isExamInformation).sort((a, b) => informationTime(b).localeCompare(informationTime(a)));
-  const competitions = relevant.filter(item => item.category === "竞赛").sort((a, b) => Number(b.freshmanAllowed === "allowed") - Number(a.freshmanAllowed === "allowed") || informationTime(b).localeCompare(informationTime(a)));
+  const competitionDeadline = (item: Information) => item.registrationDeadline ? deadlineTime(item.registrationDeadline) : Infinity;
+  const competitions = information.filter(item => isCompetitionOpportunity(item, now)).sort((a, b) =>
+    Number(competitionClosingSoon(b, now)) - Number(competitionClosingSoon(a, now)) ||
+    Number(visits.newIds.has(b.id)) - Number(visits.newIds.has(a.id)) ||
+    competitionDeadline(a) - competitionDeadline(b) || informationTime(b).localeCompare(informationTime(a)));
+  const closingCompetitions = competitions.filter(item => competitionClosingSoon(item, now));
+  const newCompetitions = competitions.filter(item => visits.newIds.has(item.id));
+  const tianchiStatus = feed?.sources.find(source => source.id === "competition-tianchi");
+  const competitionPreviews = competitions.filter(item => matchesCollege(item, profile.college)).slice(0, 4);
+  const listedCompetitions = competitionFilter === "ai" ? competitions.filter(isAiCompetition)
+    : competitionFilter === "campus" ? competitions.filter(item => /三江学院|我校|校内|校级/.test(item.title) && (item.sourceType === "school" || item.sourceType === "wechat"))
+    : competitionFilter === "soon" ? closingCompetitions
+    : competitionFilter === "new" ? newCompetitions
+    : competitions;
   const puActivities = relevant.filter(item => item.sourceType === "pu");
   const guides = relevant.filter(item => item.category === "校园资讯");
   const puCount = information.filter(item => item.sourceType === "pu").length;
@@ -409,11 +431,11 @@ export default function RadarApp() {
     const saved = favorites.includes(item.id);
     const urgent = item.registrationDeadline && isOpen(item, now) && deadlineTime(item.registrationDeadline) - now.getTime() <= 2 * 86400000;
     return <article className={`event-card ${compact ? "compact" : ""}`} key={item.id}>
-      <div className="card-top"><span className={`category-mark category-${item.sourceType}`}><CategoryIcon category={item.category} size={16} />{item.category}</span><LikeButton title={item.title} saved={saved} disabled={!loaded} onToggle={() => toggleFavorite(item.id)} /></div>
+      <div className="card-top"><span className={`category-mark category-${item.sourceType}`}><CategoryIcon category={item.category} size={16} />{view === "competitions" && isAiCompetition(item) ? item.activityType : item.category}</span><LikeButton title={item.title} saved={saved} disabled={!loaded} onToggle={() => toggleFavorite(item.id)} /></div>
       <button className="card-main" onClick={() => setSelected(item)}><h3>{item.title}</h3>{!compact && <p>{item.summary}</p>}</button>
       <p className="card-published">{item.publishedAt ? "发布于" : "首次收集于"} {formatDate(informationTime(item))}{new Date(informationTime(item)).getTime() < now.getTime() - 90 * 86400000 && " · 较早的信息，请核对是否仍有效"}</p>
-      <div className="card-tags">{visits.newIds.has(item.id) && <span className="tag new-information">新收集</span>}<span className={`tag ${item.freshmanAllowed === "unknown" ? "unknown" : ""}`}>{eligibilityLabel(item.freshmanAllowed)}</span>{registrationStatus(item, now) === "upcoming" && <span className="tag upcoming">报名尚未开始</span>}{item.colleges.length > 0 && <span className="tag">学院有限制</span>}{item.reward && <span className="tag reward">{rewardLabel(item.reward)}</span>}{item.capacity !== undefined && item.capacity <= 30 && <span className="tag limited-slots">限 {item.capacity} 人</span>}{item.remainingSlots === 0 ? <span className="tag">名额已满（同步时）</span> : item.remainingSlots !== undefined && <span className="tag limited-slots">剩 {item.remainingSlots} 个（同步时）</span>}{item.sourceAvailable === false && <span className="tag unknown">PU 列表已变更，请核对</span>}</div>
-      <div className="card-footer"><span className={urgent ? "deadline urgent" : "deadline"}><Clock3 size={14} />{item.sourceType === "exam" && !item.registrationDeadline ? !isOpen(item, now) ? "本期考试已结束" : item.activityType === "考务" ? "准考证与考试安排" : "查看考试安排" : deadlineLabel(item.registrationDeadline, now)}</span><span className="source-label">{item.source}</span><button className="card-arrow" aria-label={`查看详情：${item.title}`} onClick={() => setSelected(item)}><ArrowRight size={17} /></button></div>
+      <div className="card-tags">{visits.newIds.has(item.id) && <span className="tag new-information">新收集</span>}<span className={`tag ${item.freshmanAllowed === "unknown" ? "unknown" : ""}`}>{eligibilityLabel(item.freshmanAllowed)}</span>{registrationStatus(item, now) === "upcoming" && <span className="tag upcoming">报名尚未开始</span>}{item.colleges.length > 0 && <span className="tag">学院有限制</span>}{item.reward && <span className="tag reward">{rewardLabel(item.reward)}</span>}{item.capacity !== undefined && item.capacity <= 30 && <span className="tag limited-slots">限 {item.capacity} 人</span>}{item.remainingSlots === 0 ? <span className="tag">名额已满（同步时）</span> : item.remainingSlots !== undefined && <span className="tag limited-slots">剩 {item.remainingSlots} 个（同步时）</span>}{item.sourceAvailable === false && <span className="tag unknown">{item.sourceType === "pu" ? "PU 列表已变更，请核对" : "官网报名列表已变更"}</span>}</div>
+      <div className="card-footer"><span className={urgent ? "deadline urgent" : "deadline"}><Clock3 size={14} /><span>{item.sourceType === "exam" && !item.registrationDeadline ? !isOpen(item, now) ? "本期考试已结束" : item.activityType === "考务" ? "准考证与考试安排" : "查看考试安排" : deadlineLabel(item.registrationDeadline, now)}{view === "competitions" && item.registrationDeadline && <time dateTime={item.registrationDeadline}>{formatDate(item.registrationDeadline)}</time>}</span></span><span className="source-label">{item.source}</span><button className="card-arrow" aria-label={`查看详情：${item.title}`} onClick={() => setSelected(item)}><ArrowRight size={17} /></button></div>
     </article>;
   }
 
@@ -439,7 +461,7 @@ export default function RadarApp() {
         <section className="stats-grid" aria-label="校园快捷入口">
           <button onClick={() => discoverWith({ exam: true })}><span className="stat-icon blue"><GraduationCap size={21} /></span><span><strong>考试办事</strong><em>报名与准考证</em></span><ChevronRight size={16} /></button>
           <button onClick={() => discoverWith({ college: false }, "PU活动")}><span className="stat-icon green"><Radar size={20} /></span><span><strong>PU 活动</strong><em>活动与积分</em></span><ChevronRight size={16} /></button>
-          <button onClick={() => discoverWith({}, "竞赛")}><span className="stat-icon orange"><Sparkles size={20} /></span><span><strong>竞赛比赛</strong><em>寻找新机会</em></span><ChevronRight size={16} /></button>
+          <button onClick={() => navigate("competitions")}><span className="stat-icon orange"><Trophy size={20} /></span><span><strong>竞赛专区</strong><em>{closingCompetitions.length ? `${closingCompetitions.length} 场即将截止` : newCompetitions.length ? `${newCompetitions.length} 条新收集` : "AI 与校内赛事"}</em></span><ChevronRight size={16} /></button>
           <button onClick={() => discoverWith({ college: false }, "校园资讯")}><span className="stat-icon blue"><Compass size={20} /></span><span><strong>校园生活</strong><em>服务与攻略</em></span><ChevronRight size={16} /></button>
         </section>
         <section className="deadline-panel focus-panel" aria-label="近期截止事项"><div className="panel-title"><span className="orange"><Clock3 size={19} /></span><h2>近期截止，先别错过</h2><span className="small-badge">7 天内</span></div><div className="deadline-list">{soon.slice(0, 2).map(item => <button key={item.id} onClick={() => setSelected(item)}><span className="timeline-dot" /><span><small>{deadlineLabel(item.registrationDeadline, now)}</small><strong>{item.title}</strong><em>{eligibilityLabel(item.freshmanAllowed)} · {formatDate(item.registrationDeadline)}</em></span><ChevronRight size={15} /></button>)}{feed && soon.length === 0 && <p className="quiet-text">暂无明确的近期截止事项，考试安排与校园活动可以继续查看。</p>}{!feed && <p className="quiet-text">{feedError ? "暂时无法读取，请稍后刷新。" : "正在整理近期截止事项…"}</p>}</div><button className="panel-more" onClick={() => discoverWith({ soon: true })}>查看全部近期截止 <ArrowRight size={15} /></button></section>
@@ -448,11 +470,30 @@ export default function RadarApp() {
           <section className="section-gap">{sectionHeading("值得留意的校园信息", "优先显示已明确面向大一的信息，未知资格保留标注", () => discoverWith({}))}<div className="cards-grid">{featured.map(item => card(item))}</div>{feed && featured.length === 0 && <div className="empty-state">暂时没有匹配的信息，试试修改学院或关注类别。</div>}</section>
           <section className="section-gap">{sectionHeading("PU 校园活动", `已收集 ${puCount} 条 · 优先展示与你相关的活动`, () => discoverWith({ college: false }, "PU活动"))}<div className="cards-grid">{puActivities.slice(0, 4).map(item => card(item))}</div>{puActivities.length === 0 && <div className="empty-state"><Radar size={28} /><h3>暂时没有符合当前条件的 PU 活动</h3><p>年级、学院或报名时间可能有限制，可以前往发现页查看全部活动。</p><button className="text-button" onClick={() => discoverWith({ college: false }, "PU活动")}>查看全部 PU 活动 <ArrowRight size={16} /></button></div>}</section>
           {guides.length > 0 && <section className="section-gap">{sectionHeading("校园生活指南", "校园服务与实用攻略，随用随查", () => discoverWith({ college: false }, "校园资讯"))}<div className="cards-grid">{guides.slice(0, 4).map(item => card(item))}</div></section>}
-          <section className="section-gap">{sectionHeading("大一可以关注的竞赛", "学校通知与赛事官方信息，报名门槛和校内安排请查看详情", () => discoverWith({}, "竞赛"))}<div className="cards-grid">{competitions.slice(0, 4).map(item => card(item))}</div>{competitions.length === 0 && <div className="empty-state"><Sparkles size={28} /><h3>暂时没有匹配的竞赛</h3><p>你可以在发现页关闭学院筛选，了解更多比赛。</p><button className="text-button" onClick={() => discoverWith({ college: false }, "竞赛")}>看看全部竞赛 <ArrowRight size={16} /></button></div>}</section>
+          <section className="section-gap">{sectionHeading("近期竞赛", "学校通知与赛事官网的报名信息", () => navigate("competitions"))}<div className="cards-grid">{competitionPreviews.map(item => card(item))}</div>{feed && competitionPreviews.length === 0 && <div className="empty-state"><Trophy size={28} /><h3>暂时没有匹配的竞赛</h3><button className="text-button" onClick={() => navigate("competitions")}>看看全部竞赛 <ArrowRight size={16} /></button></div>}</section>
         </div><aside className="side-column">
           <section className="reward-panel"><div className="panel-title"><span className="green"><GraduationCap size={20} /></span><h2>参与，也有收获</h2></div><p className="panel-subtitle">积分、学分、志愿时长分别看</p>{rewarded.slice(0, 3).map(item => <button className="reward-row" key={item.id} onClick={() => setSelected(item)}><span className="reward-number">{item.reward?.value}<small>{item.reward?.kind}</small></span><strong>{item.title}</strong><ChevronRight size={15} /></button>)}<button className="panel-more" onClick={() => discoverWith({ reward: true })}>查看有奖励的活动 <ArrowRight size={15} /></button></section>
           <section className="profile-tip"><span className="profile-tip-icon"><SlidersHorizontal size={21} /></span><h3>让雷达更懂你</h3><p>{profile.college === "暂不选择" ? "选择学院和关注类别，让与你相关的信息先出现。" : `已按${profile.college}筛选。你可以随时调整关注类别。`}</p><button className="text-button" onClick={() => navigate("profile")}>调整我的资料 <ArrowRight size={15} /></button></section>
         </aside></div>
+      </>}
+      {view === "competitions" && <>
+        <section className="competition-heading" aria-labelledby="competition-title">
+          <div className="competition-title"><span className="stat-icon orange"><Trophy size={24} aria-hidden="true" /></span><h1 id="competition-title">竞赛专区</h1></div>
+          <p>从阿里云天池找 AI 实战赛，在线提交应用、智能体或算法结果。收藏后可下载报名日历提醒。</p>
+        </section>
+        <div className="competition-filters" role="group" aria-label="竞赛筛选">
+          {COMPETITION_FILTERS.map(({ key, label }) => <button type="button" key={key} className={`filter-chip ${competitionFilter === key ? "active" : ""}`}
+            aria-pressed={competitionFilter === key} onClick={() => setCompetitionFilter(key)}>{label}</button>)}
+        </div>
+        <div className="results-header">
+          <p role="status">{feed ? <>找到 <strong>{listedCompetitions.length}</strong> 条竞赛通知</> : feedError ? "暂时无法读取竞赛，请稍后刷新。" : "正在读取竞赛…"}
+            {competitionFilter === "ai" && tianchiStatus?.lastSuccessAt && <span> · 天池同步于 {formatDate(tianchiStatus.lastSuccessAt)}</span>}</p>
+          <button className="text-button" onClick={() => discoverWith({ available: false, college: false }, "竞赛")}>查看历届通知 <ArrowRight size={15} /></button>
+        </div>
+        {listedCompetitions.length ? <div className="results-grid">{listedCompetitions.slice(0, cardLimit).map(item => card(item))}</div>
+          : feed && <div className="empty-state large"><Trophy size={31} aria-hidden="true" /><h2>{competitionFilter === "all" ? "暂无近期竞赛通知" : "暂无符合条件的竞赛"}</h2>
+            {competitionFilter !== "all" && <button className="text-button" onClick={() => setCompetitionFilter("all")}>查看全部近期竞赛 <ArrowRight size={15} /></button>}
+          </div>}
       </>}
       {(view === "discover" || view === "saved") && <>
         <div className="page-heading"><span className="eyebrow">{view === "saved" ? "MY FAVORITES" : "EXPLORE CAMPUS"}</span><h1>{view === "saved" ? "把感兴趣的信息，留给自己。" : "找到你的下一个机会。"}</h1><p>{view === "saved" ? "收藏仅保存在当前浏览器，刷新后仍会保留；不同浏览器和设备之间互不共享。已截止的信息也会保留在这里。" : "按类别、资格和截止时间筛选，少一点翻找，多一点收获。"}</p></div>

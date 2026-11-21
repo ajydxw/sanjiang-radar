@@ -30,10 +30,10 @@ test('手机导航保留点击和键盘，并支持拖动确认、取消与竖�
     const second = await center(1);
     const third = await center(2);
     await touch('touchStart', first);
-    await touch('touchMove', await center(3));
+    await touch('touchMove', await center(4));
     await page.locator('.mobile-nav.is-dragging').waitFor();
     await touch('touchEnd');
-    await selected(3);
+    await selected(4);
     await buttons.nth(1).tap();
     await selected(1);
     await buttons.nth(0).tap();
@@ -42,23 +42,23 @@ test('手机导航保留点击和键盘，并支持拖动确认、取消与竖�
     await touch('touchMove', { x: first.x + (second.x - first.x) * 1.65, y: first.y });
     await page.locator('.mobile-nav.is-dragging').waitFor();
     assert.equal(new URL(page.url()).hash, '#radar', '滑动途中只预览，松手前不改地址');
-    await page.getByRole('heading', { name: '把感兴趣的信息，留给自己。' }).waitFor({ timeout: 3000 });
+    await page.getByRole('heading', { name: '竞赛专区' }).waitFor({ timeout: 3000 });
     assert.equal(await nav.evaluate(element => Number(getComputedStyle(element).getPropertyValue('--nav-stretch')) >= 1), true, '拖动时选中块随速度拉伸');
     const pill = await nav.locator('.mobile-nav-indicator').boundingBox();
     assert.ok(pill.x + pill.width / 2 > second.x && pill.x + pill.width / 2 < third.x, '选中块连续跟随手指');
     await touch('touchMove', third);
     await touch('touchEnd');
     await selected(2);
-    assert.equal(new URL(page.url()).hash, '#saved', '松手后进入目标页，不回到起始按钮');
+    assert.equal(new URL(page.url()).hash, '#competitions', '松手后进入竞赛专区，不回到起始按钮');
     await buttons.nth(1).tap();
     await selected(1);
-    await buttons.nth(2).tap();
-    await selected(2);
+    await buttons.nth(3).tap();
+    await selected(3);
 
-    await touch('touchStart', await center(2));
-    await touch('touchMove', await center(3));
+    await touch('touchStart', await center(3));
+    await touch('touchMove', await center(4));
     await touch('touchCancel');
-    await selected(2);
+    await selected(3);
     assert.equal(await nav.evaluate(element => element.classList.contains('is-pressed')), false);
     await buttons.nth(1).tap();
     await selected(1);
@@ -70,7 +70,7 @@ test('手机导航保留点击和键盘，并支持拖动确认、取消与竖�
     assert.equal(await nav.evaluate(element => element.classList.contains('is-pressed')), false, '竖向滚动不会留下按压状态');
 
     const start = await center(1);
-    const last = await center(3);
+    const last = await center(4);
     const bounds = await nav.boundingBox();
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
@@ -90,18 +90,18 @@ test('手机导航保留点击和键盘，并支持拖动确认、取消与竖�
     await page.mouse.down();
     await page.mouse.move(430, left.y, { steps: 6 });
     await page.mouse.up();
-    await selected(3);
+    await selected(4);
 
     await buttons.nth(1).press('Enter');
     await selected(1);
-    await buttons.nth(2).press('Space');
-    await selected(2);
+    await buttons.nth(3).press('Space');
+    await selected(3);
     await page.evaluate(() => { location.hash = 'profile'; });
-    await selected(3);
+    await selected(4);
     await page.reload({ waitUntil: 'networkidle' });
-    await selected(3);
+    await selected(4);
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await touch('touchStart', await center(3));
+    await touch('touchStart', await center(4));
     await page.locator('.mobile-nav.is-pressed').waitFor();
     const reduced = await nav.locator('.mobile-nav-indicator').evaluate(element => ({ transition: getComputedStyle(element).transitionDuration, scale: getComputedStyle(element).scale }));
     assert.equal(reduced.transition, '0s');

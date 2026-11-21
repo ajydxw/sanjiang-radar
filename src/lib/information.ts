@@ -78,6 +78,22 @@ export function isOpen(item: Information, now = new Date()): boolean {
   return !item.registrationDeadline || deadlineTime(item.registrationDeadline) > now.getTime();
 }
 
+export function isCompetitionOpportunity(item: Information, now: Date): boolean {
+  if (item.category !== "竞赛" || item.demo || item.freshmanAllowed === "excluded" || !isOpen(item, now)) return false;
+  if (/讲座预告|回顾|喜报|获奖(?:名单|公示)|结果公示|晋级名单|圆满落幕|成功举办|取消举办|停办/.test(item.title)) return false;
+  return !!item.registrationDeadline || !!(item.eventStart && deadlineTime(item.eventStart) > now.getTime()) ||
+    Date.parse(informationTime(item)) >= now.getTime() - 90 * 86400000;
+}
+
+export function isAiCompetition(item: Information): boolean {
+  return ["AI大模型赛", "数据算法赛", "工程开发赛"].includes(item.activityType ?? "");
+}
+
+export function competitionClosingSoon(item: Information, now: Date): boolean {
+  const remaining = item.registrationDeadline ? deadlineTime(item.registrationDeadline) - now.getTime() : Infinity;
+  return remaining > 0 && remaining <= 7 * 86400000;
+}
+
 export function informationTime(item: Information): string {
   return item.publishedAt || item.firstSeenAt || item.fetchedAt || "";
 }

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { isOpen, deadlineLabel, registrationStatus } from '../../src/lib/information.ts';
 import { competitionSources } from './sources.mjs';
 import { competitionUrl, competitionEligibility, competitionDates, parseCompetitionList, parseCompetition } from './parse.mjs';
+import { collectTianchi, tianchiInformation } from './tianchi.mjs';
 
 test('only same-host HTTPS official links are accepted', () => {
   const base = 'https://www.cms.org.cn/';
@@ -70,4 +71,37 @@ test('calendar-only deadlines remain valid through the stated China date', () =>
   assert.equal(isOpen(item, new Date('2026-10-12T00:00:00+08:00')), false);
   assert.equal(registrationStatus(item, new Date('2026-10-08T00:01:00+08:00')), 'open');
   assert.equal(isOpen({ registrationDeadline: '2026-12-18T14:00:00+08:00' }, new Date('2026-12-18T14:01:00+08:00')), false);
+});
+
+test('Tianchi uses signup dates and checks conflicts against the official rules', () => {
+  const now = Date.parse('2026-11-21T10:00:00+08:00');
+  const listing = { raceId: 532536, name: 'Qoder 高校创造力大赛', raceListStatus: 0, visualTab: 1,
+    signupStartTime: '2026-10-29 00:00:00', signupEndTime: '2026-11-30 18:00:00', raceEndTime: '2026-12-15 18:00:00',
+    introduction: '在线提交学生项目。' };
+  const race = { ...listing, introduction: '参赛对象：全国在校大学生，不限专业。\n| 发布作品 | 11 月 30 日 18:00 截止 | 在天池发布 |' };
+  const item = tianchiInformation(listing, { race }, now);
+  assert.equal(item.registrationDeadline, '2026-11-30T18:00:00+08:00');
+  assert.equal(item.eventEnd, '2026-12-15T18:00:00+08:00');
+  assert.equal(item.freshmanAllowed, 'allowed');
+  assert.equal(item.activityType, 'AI大模型赛');
+  assert.match(item.registrationNote, /作品提交.*11 月 30 日 18:00/);
+  assert.equal(tianchiInformation(listing, { race, raceTimeline: [{ name: '报名与资格赛', endTime: '2026-10-21 14:00:00' }] }, now), null);
+  assert.equal(tianchiInformation(listing, { race: { ...race, introduction: '报名组队与实名认证（2026年7月30日—2026年10月21日）' } }, now), null);
+  assert.equal(tianchiInformation(listing, { race: { ...race, needInviteCode: true } }, now), null);
+  assert.equal(tianchiInformation(listing, { race: { ...race, signupEndTime: '2026-11-31 18:00:00' } }, now), null);
+});
+
+test('Tianchi uses page totals when its hasNextPage flag is false', async () => {
+  const calls = [];
+  const { items, errors } = await collectTianchi(path => {
+    const page = Number(new URL(path).searchParams.get('pageNum'));
+    calls.push(page);
+    return Buffer.from(JSON.stringify({ success: true, data: {
+      pageNum: page, pageSize: 1, total: 2, hasNextPage: false,
+      list: [{ raceId: page, name: '系列赛事', isSeries: 1 }],
+    } }));
+  });
+  assert.deepEqual(calls, [1, 2]);
+  assert.deepEqual(items, []);
+  assert.deepEqual(errors, []);
 });

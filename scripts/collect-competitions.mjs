@@ -7,16 +7,18 @@ import { chromium } from 'playwright-core';
 import { projectRoot, readFeed, writeFeed } from './feed-files.mjs';
 import { competitionSources } from '../sources/competitions/sources.mjs';
 import { competitionUrl, parseCompetitionList, parseCompetition } from '../sources/competitions/parse.mjs';
+import { collectTianchi, tianchiSource } from '../sources/competitions/tianchi.mjs';
 import { fingerprint } from '../sources/sanjiang-web/parse.mjs';
 import { deadlineTime } from '../src/lib/information.ts';
 
-const { values } = parseArgs({ options: { force: { type: 'boolean', default: false } } });
+const { values } = parseArgs({ options: { force: { type: 'boolean', default: false }, 'data-dir': { type: 'string' }, 'tianchi-only': { type: 'boolean' } } });
 const runtimeDir = resolve(projectRoot, '.sites-runtime/collectors/competitions');
 await mkdir(runtimeDir, { recursive: true });
-const previous = await readFeed('competitions.json');
+const previous = await readFeed('competitions.json', values['data-dir']);
 const previousItems = new Map(previous?.items.map(item => [item.id, item]) ?? []);
-const items = new Map();
-const statuses = [];
+const tianchiOnly = values['tianchi-only'];
+const items = new Map(tianchiOnly ? previous?.items.filter(item => item.source !== tianchiSource.name).map(item => [item.id, item]) : []);
+const statuses = tianchiOnly ? previous?.sources.filter(source => source.id !== tianchiSource.id) ?? [] : [];
 let browser;
 let lastRequest = 0;
 const runFile = promisify(execFile);
@@ -69,9 +71,10 @@ async function getDocument(entry, source) {
 }
 
 try {
-  for (const source of competitionSources) {
+  for (const source of tianchiOnly ? [] : competitionSources) {
     const previousStatus = previous?.sources.find(status => status.id === source.id);
-    const sourceItems = new Map();
+    const savedItems = previous?.items.filter(item => item.source === source.name && item.freshmanAllowed !== 'excluded') ?? [];
+    const sourceItems = new Map(savedItems.filter(item => item.manuallyVerified).map(item => [item.id, item]));
     const excludedIds = new Set();
     let successfulReads = 0;
     const errors = [];
@@ -87,7 +90,11 @@ try {
           const document = await getDocument(entry, source);
           const information = parseCompetition(document.html, entry, source, document.pdfText);
           successfulReads++;
-          if (information.freshmanAllowed === 'excluded') { excludedIds.add(information.id); continue; }
+          if (information.freshmanAllowed === 'excluded') {
+            excludedIds.add(information.id);
+            sourceItems.delete(information.id);
+            continue;
+          }
           if (information.publishedAt && Number(information.publishedAt.slice(0, 4)) < currentYear
               && !(information.registrationDeadline && deadlineTime(information.registrationDeadline) > Date.now())
               && !(information.eventStart && Date.parse(information.eventStart) > Date.now())) continue;
@@ -98,7 +105,6 @@ try {
           if (!existing || item.publishedAt > existing.publishedAt) sourceItems.set(item.id, item);
         } catch (error) { errors.push(error.message); }
       }
-      const savedItems = previous?.items.filter(item => item.source === source.name && item.freshmanAllowed !== 'excluded') ?? [];
       if (errors.length) for (const item of savedItems) if (!excludedIds.has(item.id) && !sourceItems.has(item.id)) sourceItems.set(item.id, item);
       for (const item of sourceItems.values()) items.set(item.id, item);
       statuses.push({ id: source.id, name: source.name, url: source.url, sourceType: 'competition',
@@ -106,14 +112,32 @@ try {
         lastSuccessAt: successfulReads ? new Date().toISOString() : previousStatus?.lastSuccessAt || null,
         note: sourceItems.size ? '含已截止历史记录；首页优先展示近期机会，校内安排另行核验。' : '当前没有可展示的报名通知。', error: errors.length ? errors.join('；').slice(0, 220) : null });
     } catch (error) {
-      const saved = previous?.items.filter(item => item.source === source.name && item.freshmanAllowed !== 'excluded') ?? [];
-      for (const item of saved) items.set(item.id, item);
-      statuses.push({ id: source.id, name: source.name, url: source.url, sourceType: 'competition', state: 'failed', count: saved.length, lastSuccessAt: previousStatus?.lastSuccessAt || null, error: error.message, note: '更新失败时保留上次成功的数据。' });
+      for (const item of savedItems) items.set(item.id, item);
+      statuses.push({ id: source.id, name: source.name, url: source.url, sourceType: 'competition', state: 'failed', count: savedItems.length, lastSuccessAt: previousStatus?.lastSuccessAt || null, error: error.message, note: '更新失败时保留上次成功的数据。' });
     }
     const status = statuses.at(-1);
     console.log(`${source.name}：${status.count} 条 · ${status.state}${status.error ? `（${status.error}）` : ''}`);
   }
-  await writeFeed('competitions.json', { schemaVersion: 1, generatedAt: new Date().toISOString(), items: [...items.values()], sources: statuses });
+  const previousTianchi = previous?.items.filter(item => item.source === tianchiSource.name) ?? [];
+  const tianchiStatus = { ...tianchiSource, sourceType: 'competition', lastAttemptAt: new Date().toISOString() };
+  try {
+    const { items: collected, errors } = await collectTianchi(getResponse);
+    const fetchedAt = new Date().toISOString();
+    const active = new Set(collected.map(item => item.id));
+    for (const item of previousTianchi) if (!active.has(item.id)) {
+      items.set(item.id, errors.length ? item : { ...item, sourceAvailable: false });
+    }
+    for (const item of collected) items.set(item.id, { ...item, firstSeenAt: previousItems.get(item.id)?.firstSeenAt ?? fetchedAt, fetchedAt });
+    statuses.push({ ...tianchiStatus, state: errors.length ? 'partial' : 'ok', count: collected.length, lastSuccessAt: fetchedAt,
+      error: errors.join('；').slice(0, 220) || null, note: '检查天池公开报名列表的 AI 大模型、数据算法与工程开发赛事。' });
+  } catch (error) {
+    for (const item of previousTianchi) items.set(item.id, item);
+    statuses.push({ ...tianchiStatus, state: 'failed', count: previousTianchi.length, lastSuccessAt: previous?.sources.find(source => source.id === tianchiSource.id)?.lastSuccessAt ?? null,
+      error: error.message, note: '本次读取失败，保留上次快照。' });
+  }
+  const tianchi = statuses.at(-1);
+  console.log(`${tianchi.name}：${tianchi.count} 条 · ${tianchi.state}${tianchi.error ? `（${tianchi.error}）` : ''}`);
+  await writeFeed('competitions.json', { schemaVersion: 1, generatedAt: new Date().toISOString(), items: [...items.values()], sources: statuses }, values['data-dir']);
   console.log(`竞赛同步完成：${items.size} 条；已截止记录不会进入首页机会列表。`);
-  if (statuses.every(source => source.state === 'failed')) process.exitCode = 1;
+  if (tianchiOnly ? tianchi.state === 'failed' : statuses.every(source => source.state === 'failed')) process.exitCode = 1;
 } finally { await browser?.close(); }

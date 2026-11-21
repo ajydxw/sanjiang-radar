@@ -12,8 +12,10 @@ import { pidState } from './watch-private-services.mjs';
 
 const remote = 'https://github.com/ajydxw/sanjiang-radar.git';
 const actions = 'https://api.github.com/repos/ajydxw/sanjiang-radar/actions/workflows/pages.yml/runs';
-const liveUrl = 'https://ajydxw.github.io/sanjiang-radar/data/pu.json';
+const liveData = 'https://ajydxw.github.io/sanjiang-radar/data';
 const publicPath = 'public/data/pu.json';
+const competitionFile = 'competitions.json';
+const competitionPath = `public/data/${competitionFile}`;
 const maximumFeedBytes = 5 * 1024 * 1024;
 const minute = 60_000;
 const powershell = resolve(process.env.SystemRoot || 'C:/Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe');
@@ -46,6 +48,21 @@ export function validateSnapshot(bytes, startedAt, finishedAt = Date.now()) {
   }
   if (source.count !== feed.items.length || feed.items.some(item => item.sourceType !== 'pu' || item.demo)) {
     throw new Error('feed-invalid');
+  }
+  return feed;
+}
+
+export function validateCompetitionSnapshot(bytes, startedAt, finishedAt = Date.now()) {
+  if (bytes.length > maximumFeedBytes) throw new Error('feed-invalid');
+  const feed = JSON.parse(bytes.toString('utf8'));
+  assertPublicFeed(feed);
+  if (feed.items.some(item => item.category !== '竞赛' || item.sourceType !== 'competition' || item.demo) ||
+      feed.sources.some(source => source.sourceType !== 'competition')) throw new Error('feed-invalid');
+  const timestamp = Date.parse(feed.generatedAt);
+  if (!Number.isFinite(timestamp) || timestamp < startedAt || timestamp > finishedAt) throw new Error('collection-not-fresh');
+  if (!feed.sources.some(source => source.id === 'competition-tianchi' && ['ok', 'partial'].includes(source.state) &&
+      Date.parse(source.lastSuccessAt) >= startedAt && Date.parse(source.lastSuccessAt) <= timestamp)) {
+    throw new Error('collection-incomplete');
   }
   return feed;
 }
@@ -118,9 +135,9 @@ async function windowsSnapshot() {
   return snapshot;
 }
 
-function collect(collector, timeout = 20 * minute) {
+function collect(collector, timeout = 20 * minute, script = 'collect-pu.mjs', args = ['--max-pages', '50']) {
   return new Promise((done, fail) => {
-    const child = spawn(process.execPath, [resolve(collector, 'scripts/collect-pu.mjs'), '--max-pages', '50'], {
+    const child = spawn(process.execPath, [resolve(collector, 'scripts', script), ...args], {
       cwd: collector, windowsHide: true, stdio: 'ignore',
     });
     let timedOut = false;
@@ -144,14 +161,14 @@ function collect(collector, timeout = 20 * minute) {
   });
 }
 
-function git(cwd, args) {
+function git(cwd, args, maxBuffer = 128 * 1024) {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^GIT_/i.test(key)));
   return runFile('git', [
     '-c', 'user.name=ajydxw', '-c', 'user.email=137271330+ajydxw@users.noreply.github.com',
     '-c', 'core.hooksPath=.git/pu-publisher-no-hooks', '-c', 'commit.gpgsign=false', ...args,
   ], {
     cwd, env: { ...env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' },
-    windowsHide: true, timeout: 90_000, maxBuffer: 128 * 1024,
+    windowsHide: true, timeout: 90_000, maxBuffer,
   });
 }
 
@@ -188,21 +205,27 @@ async function fetchMain(repo) {
   return head;
 }
 
-async function pushFeed(runtime, bytes) {
+async function committedFeed(repo, head, path) {
+  const { stdout } = await git(repo, ['show', `${head}:${path}`], maximumFeedBytes);
+  return Buffer.from(stdout, 'utf8');
+}
+
+async function pushFeed(runtime, bytes, { path = publicPath, expected, message = 'Refresh public PU activity feed' } = {}) {
   const repo = await ownedRepo(runtime);
   let head = await fetchMain(repo);
   for (let attempt = 0; attempt <= 2; attempt++) {
     if (await readFile(resolve(repo, '.pu-publisher-owner'), 'utf8') !== `${repo}\n${remote}\n`) throw new Error('unsafe-repo');
     await git(repo, ['reset', '--hard', head]);
-    const target = resolve(repo, publicPath);
+    const target = resolve(repo, path);
     await assertPath(dirname(target), 'isDirectory');
     await assertPath(target, 'isFile');
     if ((await readFile(target)).equals(bytes)) return head;
+    if (expected && !(await committedFeed(repo, head, path)).equals(expected)) throw new Error('competition-feed-advanced');
     await atomicWrite(target, bytes);
-    await git(repo, ['add', '--', publicPath]);
+    await git(repo, ['add', '--', path]);
     const { stdout } = await git(repo, ['diff', '--cached', '--name-only']);
-    if (stdout.trim() !== publicPath) throw new Error('unexpected-git-diff');
-    await git(repo, ['commit', '-m', 'Refresh public PU activity feed']);
+    if (stdout.trim() !== path) throw new Error('unexpected-git-diff');
+    await git(repo, ['commit', '-m', message]);
     const commit = (await git(repo, ['rev-parse', 'HEAD'])).stdout.trim();
     if (!shaPattern.test(commit)) throw new Error('git-sync-failed');
     try {
@@ -217,7 +240,7 @@ async function pushFeed(runtime, bytes) {
   }
 }
 
-export async function verifyDeployment(commit, hash, { request = fetch, pause = sleep, timeout = 8 * minute, report = async () => {} } = {}) {
+export async function verifyDeployment(commit, hash, { request = fetch, pause = sleep, timeout = 8 * minute, report = async () => {}, filename = 'pu.json' } = {}) {
   const deadline = performance.now() + timeout;
   let workflowSucceeded = false;
   let state = 'queued';
@@ -235,7 +258,7 @@ export async function verifyDeployment(commit, hash, { request = fetch, pause = 
       if (observed !== state) { state = observed; await report(state); }
     }
     if (workflowSucceeded) {
-      const response = await get(`${liveUrl}?pu-deployment=${commit}`).catch(() => null);
+      const response = await get(`${liveData}/${filename}?pu-deployment=${commit}`).catch(() => null);
       const content = response?.ok ? await response.arrayBuffer().catch(() => null) : null;
       if (content && content.byteLength <= maximumFeedBytes && sha(Buffer.from(content)) === hash) return;
     }
@@ -247,7 +270,7 @@ export async function verifyDeployment(commit, hash, { request = fetch, pause = 
 const errors = new Set([
   'collection-incomplete', 'collection-not-fresh', 'collection-failed', 'collection-timeout', 'collector-busy',
   'feed-invalid', 'git-push-failed', 'git-sync-failed', 'unsafe-path', 'unsafe-repo', 'unexpected-git-diff',
-  'pages-workflow-failed', 'pages-live-mismatch', 'pages-workflow-timeout', 'process-check-failed',
+  'pages-workflow-failed', 'pages-live-mismatch', 'pages-workflow-timeout', 'process-check-failed', 'competition-feed-advanced',
 ]);
 
 export async function syncPu() {
@@ -306,9 +329,56 @@ export async function syncPu() {
   } finally { await release?.(); }
 }
 
+async function syncCompetitions() {
+  const runtime = resolve(projectRoot, '.sites-runtime/competition-publisher');
+  if (!await lstat(runtime).catch(notFound)) await secureDirectory(runtime);
+  await assertPath(runtime, 'isDirectory');
+  const { bootAt } = await windowsSnapshot();
+  const release = await acquireLock(runtime, Date.parse(bootAt));
+  if (!release) return 'publisher-busy';
+
+  let stage = 'download';
+  const result = { startedAt: new Date().toISOString() };
+  const save = (state, error) => atomicWrite(resolve(runtime, 'status.json'), JSON.stringify({
+    state, stage, ...result, updatedAt: new Date().toISOString(), ...(error && { error }),
+  }, null, 2) + '\n');
+  try {
+    await save('running');
+    const repo = await ownedRepo(runtime);
+    const expected = await committedFeed(repo, await fetchMain(repo), competitionPath);
+    assertPublicFeed(JSON.parse(expected.toString('utf8')));
+    const snapshot = resolve(runtime, competitionFile);
+    await atomicWrite(snapshot, expected);
+
+    stage = 'collect';
+    const startedAt = Date.now();
+    await save('running');
+    await collect(projectRoot, 4 * minute, 'collect-competitions.mjs', ['--tianchi-only', '--data-dir', runtime]);
+    const bytes = await readFile(snapshot);
+    const feed = validateCompetitionSnapshot(bytes, startedAt);
+    result.itemCount = feed.items.length;
+    result.sha256 = sha(bytes);
+
+    stage = 'push';
+    await save('running');
+    result.commit = await pushFeed(runtime, bytes, { path: competitionPath, expected, message: 'Refresh public competition notices' });
+    stage = 'pages';
+    await save('queued');
+    await verifyDeployment(result.commit, result.sha256, { filename: competitionFile, report: state => save(state) });
+    await save('published');
+    return 'published';
+  } catch (error) {
+    const code = errors.has(error.message) ? error.message : `${stage}-failed`;
+    await save('failed', code);
+    throw new Error(code);
+  } finally { await release(); }
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  syncPu().then(state => console.log(`PU: ${state}`)).catch(error => {
-    console.error(`PU: ${errors.has(error.message) || /^(?:process-check|collect|validate|local-copy|push|pages)-failed$/.test(error.message) ? error.message : 'publisher-failed'}`);
+  const competitions = process.argv[2] === '--competitions';
+  const label = competitions ? 'Competitions' : 'PU';
+  (competitions ? syncCompetitions() : syncPu()).then(state => console.log(`${label}: ${state}`)).catch(error => {
+    console.error(`${label}: ${errors.has(error.message) || /^(?:download|process-check|collect|validate|local-copy|push|pages)-failed$/.test(error.message) ? error.message : 'publisher-failed'}`);
     process.exitCode = 1;
   });
 }

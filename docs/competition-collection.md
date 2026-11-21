@@ -1,9 +1,10 @@
 # 竞赛信息接入
 
-目前监测六个赛事来源：
+竞赛专区优先显示能在线做题、提交作品或跑榜的 AI 实战赛。
 
 | 来源 | 自动读取方式 |
 | --- | --- |
+| 阿里云天池 | 读公开报名列表及赛事规则，检查 AI 大模型、数据算法和工程开发赛 |
 | 中国数学会全国大学生数学竞赛栏目 | 发现举办通知，读取官方 PDF |
 | 中国计算机学会 CCSP 通知栏目 | 发现报名通知，读取官方正文 |
 | 蓝桥杯软件、电子与鸿蒙个人赛 | 读取官网当前报名范围及条件 |
@@ -13,11 +14,19 @@
 
 数学、CCSP 按栏目发现新通知；其余读取当前赛事页面，并不宣称覆盖整个赛事官网的全部文章。英语赛使用组委会提供的赛氪合作报名页，不是接通赛氪全站竞赛聚合。
 
-入口为 `scripts/collect-competitions.mjs`，发布数据为 `public/data/competitions.json`。已有本机同步任务每小时检查，文档缓存一小时；需要电脑开机联网。原文、PDF 与缓存在忽略目录 `.sites-runtime/collectors/competitions/`，不会放到公网。PDF 使用本机已有 Python/pypdf，动态页面使用已有 Edge/Playwright，无新增依赖。
+入口为 `scripts/collect-competitions.mjs`，发布数据为 `public/data/competitions.json`。天池检查公开列表前五页，逐场读取规则。比赛结束时间和报名截止时间分别记录。采集跳过报名日期与规则中可识别的日期冲突的赛事，已停止报名的条目会移出新机会列表。
+
+Windows 自动任务在当地时间每天 09:20 和 17:20 检查天池，需电脑开机、联网且登录 Windows。任务发布通过校验的竞赛快照，等待 Pages 部署结束并校验线上 JSON。站内标出新收集和 7 天内截止的赛事。手机日历提醒需要收藏、下载并导入。
 
 ```sh
 npm run collect:competitions
-node scripts/collect-competitions.mjs --force
+node scripts/collect-competitions.mjs --tianchi-only
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-competition-sync-startup.ps1
+Get-ScheduledTaskInfo -TaskName 'SanjiangRadar-Competition-AutoPublish'
+Get-Content -Encoding UTF8 .\.sites-runtime\competition-publisher\status.json
 ```
 
 ## 展示规则
