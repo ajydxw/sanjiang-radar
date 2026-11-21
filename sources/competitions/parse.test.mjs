@@ -4,6 +4,7 @@ import { isOpen, deadlineLabel, registrationStatus } from '../../src/lib/informa
 import { competitionSources } from './sources.mjs';
 import { competitionUrl, competitionEligibility, competitionDates, parseCompetitionList, parseCompetition } from './parse.mjs';
 import { collectTianchi, tianchiInformation } from './tianchi.mjs';
+import { aiDaxueInformation, modelScopeInformation } from './project-contests.mjs';
 
 test('only same-host HTTPS official links are accepted', () => {
   const base = 'https://www.cms.org.cn/';
@@ -104,4 +105,32 @@ test('Tianchi uses page totals when its hasNextPage flag is false', async () => 
   assert.deepEqual(calls, [1, 2]);
   assert.deepEqual(items, []);
   assert.deepEqual(errors, []);
+});
+
+test('ModelScope keeps project registration and submission deadlines distinct', () => {
+  const now = Date.parse('2026-11-21T10:00:00+08:00');
+  const event = {
+    Id: 394, Title: 'AI造游戏，人人都是游戏制作人｜AI+∞开发者创作大赛第三期',
+    EventType: 'competition', Category: 'application', PublishStatus: 1, Status: 1,
+    RegistrationDeadline: Date.parse('2026-12-01T18:00:00+08:00') / 1000,
+    Content: JSON.stringify([{ content: ['p', {}, '创作原创游戏，发布到魔搭创空间。'] }]),
+  };
+  const item = modelScopeInformation(event, now);
+  assert.equal(item.activityType, 'AI项目赛');
+  assert.equal(item.registrationDeadline, '2026-12-01T12:00:00+08:00');
+  assert.equal(item.submissionDeadline, '2026-12-01T18:00:00+08:00');
+  assert.equal(modelScopeInformation(event, Date.parse('2026-12-01T12:01:00+08:00')), null);
+  assert.throws(() => modelScopeInformation({ ...event, RegistrationDeadline: event.RegistrationDeadline + 86400 }, now), /需重新核对/);
+  const restricted = { ...event, Id: 123, Content: JSON.stringify([{ content: ['p', {}, '原创应用全程线上，提交作品。仅限本校学生。'] }]) };
+  assert.equal(modelScopeInformation(restricted, now), null);
+});
+
+test('AI 大学堂保留相冲突的阶段说明，不将创作展示时间当成提交截止', () => {
+  const text = '面向全国高校生的 AStudio应用创作赛\n立即报名参赛\n作品创作及展示\n10月15日-12月15日\n至12月31日结束，报名和交作品在整个活动期内都开放';
+  const item = aiDaxueInformation(text, Date.parse('2026-11-21T12:00:00+08:00'));
+  assert.equal(item.freshmanAllowed, 'allowed');
+  assert.equal(item.registrationDeadline, undefined);
+  assert.equal(item.submissionDeadline, undefined);
+  assert.match(item.registrationNote, /12 月 15 日.*12月31日/);
+  assert.equal(aiDaxueInformation(text, Date.parse('2026-12-16T09:00:00+08:00')), null);
 });

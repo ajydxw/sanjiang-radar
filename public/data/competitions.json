@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-21T02:13:16.916Z",
+  "generatedAt": "2026-11-21T02:34:27.838Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -221,7 +221,7 @@
       "id": "competition-tianchi-532536",
       "title": "2026 Qoder 高校创造力大赛",
       "category": "竞赛",
-      "activityType": "AI大模型赛",
+      "activityType": "AI项目赛",
       "summary": "2026 Qoder 高校创造力大赛面向全国在校大学生（含港澳台本科生与硕博研究生），不限专业。参赛者用 Qoder 完成一个完整项目，部署到 Qoder Sites 并开放公开访问，于 11 月 30 日 18:00 前在天池赛题页论坛发布作品帖。 大赛设 StudyHack 学习科研、LifeHack 生活娱乐、Hack4Good 技术向善三个赛道，分别评分、分别设奖，选手任选其一：StudyHack 征集科研与学习场景的各类应用；LifeHack 征集生活、社团和娱乐场景的应用；Hack4Good 征集体现社会责任、面向特定群体的应用。 1—3 人组队，提交份数不限，每个团队限获一项奖。",
       "source": "阿里云天池",
       "sourceType": "competition",
@@ -242,7 +242,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:13:16.916Z"
+      "fetchedAt": "2026-11-21T02:34:08.168Z"
     },
     {
       "id": "competition-tianchi-532510",
@@ -269,7 +269,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:13:16.916Z"
+      "fetchedAt": "2026-11-21T02:34:08.168Z"
     },
     {
       "id": "competition-tianchi-532515",
@@ -296,7 +296,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:13:16.916Z"
+      "fetchedAt": "2026-11-21T02:34:08.168Z"
     },
     {
       "id": "competition-tianchi-532532",
@@ -323,7 +323,95 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T02:13:16.916Z"
+      "fetchedAt": "2026-11-21T02:34:08.168Z"
+    },
+    {
+      "id": "competition-modelscope-394",
+      "category": "竞赛",
+      "source": "魔搭社区",
+      "sourceType": "competition",
+      "activityType": "AI项目赛",
+      "location": "线上提交",
+      "colleges": [],
+      "importance": "high",
+      "demo": false,
+      "detailRead": true,
+      "verification": "竞赛官方原文",
+      "rewardNote": "奖项、费用及校内认定请核对官方规则。",
+      "title": "AI造游戏，人人都是游戏制作人｜AI+∞开发者创作大赛第三期",
+      "sourcePortal": "https://modelscope.cn/events/394",
+      "publishedAt": "2026-11-02T08:21:51Z",
+      "summary": "用 AI 做一款原创、可试玩的游戏，或做游戏开发工具与智能体。作品部署到魔搭创空间，并附创作手记和演示视频。",
+      "registrationStart": "2026-11-01T16:00:00.000Z",
+      "registrationDeadline": "2026-12-01T12:00:00+08:00",
+      "submissionDeadline": "2026-12-01T18:00:00+08:00",
+      "freshmanAllowed": "unknown",
+      "eligibilityEvidence": null,
+      "registrationMethod": "先按赛事专题发布公开参赛构想并提交帖子链接。完成后从同一专题提交作品与创作手记。",
+      "attachments": [
+        {
+          "title": "主办方赛程与参赛指南",
+          "url": "https://modelscope.cn/active/AIstudio"
+        }
+      ],
+      "firstSeenAt": "2026-11-21T02:31:22.486Z",
+      "fetchedAt": "2026-11-21T02:34:20.921Z"
+    },
+    {
+      "id": "competition-modelscope-421",
+      "category": "竞赛",
+      "source": "魔搭社区",
+      "sourceType": "competition",
+      "activityType": "AI项目赛",
+      "location": "线上提交",
+      "colleges": [],
+      "importance": "high",
+      "demo": false,
+      "detailRead": true,
+      "verification": "竞赛官方原文",
+      "rewardNote": "奖项、费用及校内认定请核对官方规则。",
+      "title": "知乎黑客松S3 |湾区共创季",
+      "sourcePortal": "https://modelscope.cn/events/421",
+      "publishedAt": "2026-11-10T09:40:29Z",
+      "summary": "面向全球青年开发者，个人或 1–5 人组队。围绕知识探索、陪伴交互或出海，在线提交可运行 Demo 和产品说明。",
+      "registrationStart": "2026-11-04T16:00:00.000Z",
+      "registrationDeadline": "2026-12-04T23:59:00+08:00",
+      "submissionDeadline": "2026-12-07T10:00:00+08:00",
+      "freshmanAllowed": "allowed",
+      "eligibilityEvidence": "面向全球开放线上报名",
+      "registrationMethod": "从魔搭赛事页进入知乎官方报名。开发和作品提交在线完成，入围也支持云路演。",
+      "attachments": [
+        {
+          "title": "主办方赛程与参赛指南",
+          "url": "https://hackathon-s3.event.zhihu.com/"
+        }
+      ],
+      "firstSeenAt": "2026-11-21T02:31:22.486Z",
+      "fetchedAt": "2026-11-21T02:34:20.921Z"
+    },
+    {
+      "id": "competition-aidaxue-cyber-maker-2026",
+      "category": "竞赛",
+      "source": "讯飞 AI 大学堂",
+      "sourceType": "competition",
+      "activityType": "AI项目赛",
+      "location": "线上提交",
+      "colleges": [],
+      "importance": "high",
+      "demo": false,
+      "detailRead": true,
+      "verification": "竞赛官方原文",
+      "rewardNote": "奖项、费用及校内认定请核对官方规则。",
+      "title": "赛博制作人计划 · 校园 AI 微应用挑战赛",
+      "sourcePortal": "https://www.aidaxue.com/activity/cyber-maker",
+      "publishedAt": "",
+      "summary": "面向全国高校生，用讯飞 AStudio 做网页、微应用或小游戏，在活动页提交可访问的作品分享链接。",
+      "freshmanAllowed": "allowed",
+      "eligibilityEvidence": "官方活动页明确面向全国高校生。",
+      "registrationMethod": "在讯飞 AI 大学堂活动页报名，使用 AStudio 客户端创作并发布作品。",
+      "registrationNote": "官网时间轴列创作展示至 12 月 15 日，之后进入评审。FAQ 列活动报名与交作品开放至 12月31日。用于评审的最终提交时间请核对官方页。",
+      "firstSeenAt": "2026-11-21T02:31:28.748Z",
+      "fetchedAt": "2026-11-21T02:34:27.838Z"
     }
   ],
   "sources": [
@@ -404,12 +492,35 @@
       "name": "阿里云天池",
       "url": "https://tianchi.aliyun.com/competition/",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-21T02:13:10.554Z",
+      "lastAttemptAt": "2026-11-21T02:34:01.308Z",
       "state": "ok",
       "count": 4,
-      "lastSuccessAt": "2026-11-21T02:13:16.916Z",
-      "error": null,
-      "note": "检查天池公开报名列表的 AI 大模型、数据算法与工程开发赛事。"
+      "lastSuccessAt": "2026-11-21T02:34:08.168Z",
+      "error": null
+    },
+    {
+      "id": "competition-modelscope",
+      "name": "魔搭社区",
+      "url": "https://modelscope.cn/events",
+      "note": "检查赛事首页和已收录的在报项目，读取官方参赛规则。",
+      "sourceType": "competition",
+      "lastAttemptAt": "2026-11-21T02:34:08.168Z",
+      "state": "ok",
+      "count": 2,
+      "lastSuccessAt": "2026-11-21T02:34:20.921Z",
+      "error": null
+    },
+    {
+      "id": "competition-aidaxue",
+      "name": "讯飞 AI 大学堂",
+      "url": "https://www.aidaxue.com/activity/cyber-maker",
+      "note": "定时核对校园 AI 微应用挑战赛的官方活动页。",
+      "sourceType": "competition",
+      "lastAttemptAt": "2026-11-21T02:34:20.921Z",
+      "state": "ok",
+      "count": 1,
+      "lastSuccessAt": "2026-11-21T02:34:27.838Z",
+      "error": null
     }
   ]
 }

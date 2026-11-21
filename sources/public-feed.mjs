@@ -1,9 +1,9 @@
 export const PUBLIC_FEEDS = ['sanjiang-web.json', 'pu.json', 'wechat.json', 'competitions.json', 'exams.json'];
-const itemFields = new Set('id title category summary source sourceType sourcePortal publishedAt firstSeenAt description registrationStart registrationDeadline eventStart eventEnd location freshmanAllowed colleges reward rewardNote importance registrationMethod registrationNote verification demo fetchedAt manuallyVerified eligibilityEvidence dateEvidence attachments eligibleYears activityType capacity registeredCount remainingSlots officialStatus detailRead sourceAvailable'.split(' '));
+const itemFields = new Set('id title category summary source sourceType sourcePortal publishedAt firstSeenAt description registrationStart registrationDeadline submissionDeadline eventStart eventEnd location freshmanAllowed colleges reward rewardNote importance registrationMethod registrationNote verification demo fetchedAt manuallyVerified eligibilityEvidence dateEvidence attachments eligibleYears activityType capacity registeredCount remainingSlots officialStatus detailRead sourceAvailable'.split(' '));
 const sourceFields = new Set('id name url state count lastSuccessAt lastAttemptAt note error sourceType collectedCount observedTotal pagesRead complete archivedCount selector discoveryMode'.split(' '));
 const categories = ['PU活动', '竞赛', '学校通知', '讲座', '志愿活动', '校园资讯'];
 const sourceTypes = ['school', 'pu', 'wechat', 'competition', 'exam'];
-const dates = ['publishedAt', 'firstSeenAt', 'fetchedAt', 'registrationStart', 'registrationDeadline', 'eventStart', 'eventEnd'];
+const dates = ['publishedAt', 'firstSeenAt', 'fetchedAt', 'registrationStart', 'registrationDeadline', 'submissionDeadline', 'eventStart', 'eventEnd'];
 const fail = () => { throw new Error('公开信息格式或链接异常，已停止发布'); };
 const string = value => typeof value === 'string' && value.length <= 20000;
 const strings = value => Array.isArray(value) && value.length <= 100 && value.every(string);

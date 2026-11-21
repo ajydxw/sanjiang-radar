@@ -38,11 +38,15 @@ test('lock takeover requires ESRCH or an owner timestamp before this boot', () =
   assert.equal(staleOwner({ pid: 1234 }, startedAt + 1, missing), false);
 });
 
-test('publishes competition data only after a fresh Tianchi check', () => {
+test('publishes competition data after a fresh check of any supported platform', () => {
   const source = { id: 'competition-tianchi', sourceType: 'competition', name: '阿里云天池', url: 'https://tianchi.aliyun.com/competition/',
     state: 'ok', count: 0, lastSuccessAt: timestamp };
   const snapshot = { ...feed, sources: [source] };
   assert.deepEqual(validateCompetitionSnapshot(pack(snapshot), startedAt, startedAt + 1), snapshot);
+  const modelScopeSnapshot = { ...snapshot, sources: [
+    { ...source, state: 'failed' }, { ...source, id: 'competition-modelscope', name: '魔搭社区' },
+  ] };
+  assert.deepEqual(validateCompetitionSnapshot(pack(modelScopeSnapshot), startedAt, startedAt + 1), modelScopeSnapshot);
   assert.throws(() => validateCompetitionSnapshot(bytes, startedAt, startedAt + 1), /feed-invalid/);
   assert.throws(() => validateCompetitionSnapshot(pack(snapshot), startedAt + 1), /collection-not-fresh/);
   for (const update of [{ id: 'other' }, { state: 'failed' }, { lastSuccessAt: '2026-11-13T08:00:00Z' }]) {

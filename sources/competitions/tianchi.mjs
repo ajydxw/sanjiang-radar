@@ -61,7 +61,7 @@ export function tianchiInformation(listing, detail, now) {
     id: `competition-tianchi-${race.raceId}`,
     title: race.name.trim().slice(0, 180),
     category: '竞赛',
-    activityType: types[race.visualTab],
+    activityType: submissionTime && /部署到\s*Qoder Sites/.test(rules) ? 'AI项目赛' : types[race.visualTab],
     summary: text(listing.introduction).replace(/\s+/g, ' ').slice(0, 300) || '查看官方赛题和参赛规则。',
     source: tianchiSource.name,
     sourceType: 'competition',

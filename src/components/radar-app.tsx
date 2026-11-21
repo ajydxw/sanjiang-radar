@@ -177,6 +177,7 @@ function DetailDialog({ item, saved, disabled, now, reminderOptions, onReminderC
     ["谁可以参加", item.colleges.length ? `${item.colleges.join("、")}；${eligibilityLabel(item.freshmanAllowed)}` : `适用学院尚未核验；${eligibilityLabel(item.freshmanAllowed)}`],
     ...(item.eligibleYears?.length ? [["活动年级", item.eligibleYears.map(year => `${year}级`).join("、")]] : []),
     ...(item.activityType === "考务" ? [] : [["报名开始", formatDate(item.registrationStart)], ["报名 / 办理截止", formatDate(item.registrationDeadline)]]),
+    ...(item.submissionDeadline ? [["作品提交截止", formatDate(item.submissionDeadline)]] : []),
     ...(item.registrationNote ? [[item.sourceType === "exam" ? "办理提示" : "报名提示", item.registrationNote]] : []),
     [item.sourceType === "exam" ? "考试 / 办理时间" : "活动时间", `${formatDate(item.eventStart)}${item.eventEnd && item.eventEnd !== item.eventStart ? ` 至 ${formatDate(item.eventEnd)}` : ""}`],
     [item.sourceType === "exam" ? "考试地点" : "活动地点", item.location ?? "未明确，请查看原通知"],
@@ -401,9 +402,11 @@ export default function RadarApp() {
     competitionDeadline(a) - competitionDeadline(b) || informationTime(b).localeCompare(informationTime(a)));
   const closingCompetitions = competitions.filter(item => competitionClosingSoon(item, now));
   const newCompetitions = competitions.filter(item => visits.newIds.has(item.id));
-  const tianchiStatus = feed?.sources.find(source => source.id === "competition-tianchi");
+  const competitionSnapshot = feedChunks.current["/data/competitions.json"]?.generatedAt;
   const competitionPreviews = competitions.filter(item => matchesCollege(item, profile.college)).slice(0, 4);
-  const listedCompetitions = competitionFilter === "ai" ? competitions.filter(isAiCompetition)
+  const listedCompetitions = competitionFilter === "ai" ? competitions.filter(isAiCompetition).sort((a, b) =>
+    Number(b.activityType === "AI项目赛") - Number(a.activityType === "AI项目赛") ||
+    Number(b.freshmanAllowed === "allowed") - Number(a.freshmanAllowed === "allowed"))
     : competitionFilter === "campus" ? competitions.filter(item => /三江学院|我校|校内|校级/.test(item.title) && (item.sourceType === "school" || item.sourceType === "wechat"))
     : competitionFilter === "soon" ? closingCompetitions
     : competitionFilter === "new" ? newCompetitions
@@ -435,7 +438,7 @@ export default function RadarApp() {
       <button className="card-main" onClick={() => setSelected(item)}><h3>{item.title}</h3>{!compact && <p>{item.summary}</p>}</button>
       <p className="card-published">{item.publishedAt ? "发布于" : "首次收集于"} {formatDate(informationTime(item))}{new Date(informationTime(item)).getTime() < now.getTime() - 90 * 86400000 && " · 较早的信息，请核对是否仍有效"}</p>
       <div className="card-tags">{visits.newIds.has(item.id) && <span className="tag new-information">新收集</span>}<span className={`tag ${item.freshmanAllowed === "unknown" ? "unknown" : ""}`}>{eligibilityLabel(item.freshmanAllowed)}</span>{registrationStatus(item, now) === "upcoming" && <span className="tag upcoming">报名尚未开始</span>}{item.colleges.length > 0 && <span className="tag">学院有限制</span>}{item.reward && <span className="tag reward">{rewardLabel(item.reward)}</span>}{item.capacity !== undefined && item.capacity <= 30 && <span className="tag limited-slots">限 {item.capacity} 人</span>}{item.remainingSlots === 0 ? <span className="tag">名额已满（同步时）</span> : item.remainingSlots !== undefined && <span className="tag limited-slots">剩 {item.remainingSlots} 个（同步时）</span>}{item.sourceAvailable === false && <span className="tag unknown">{item.sourceType === "pu" ? "PU 列表已变更，请核对" : "官网报名列表已变更"}</span>}</div>
-      <div className="card-footer"><span className={urgent ? "deadline urgent" : "deadline"}><Clock3 size={14} /><span>{item.sourceType === "exam" && !item.registrationDeadline ? !isOpen(item, now) ? "本期考试已结束" : item.activityType === "考务" ? "准考证与考试安排" : "查看考试安排" : deadlineLabel(item.registrationDeadline, now)}{view === "competitions" && item.registrationDeadline && <time dateTime={item.registrationDeadline}>{formatDate(item.registrationDeadline)}</time>}</span></span><span className="source-label">{item.source}</span><button className="card-arrow" aria-label={`查看详情：${item.title}`} onClick={() => setSelected(item)}><ArrowRight size={17} /></button></div>
+      <div className="card-footer"><span className={urgent ? "deadline urgent" : "deadline"}><Clock3 size={14} /><span>{item.sourceType === "exam" && !item.registrationDeadline ? !isOpen(item, now) ? "本期考试已结束" : item.activityType === "考务" ? "准考证与考试安排" : "查看考试安排" : deadlineLabel(item.registrationDeadline, now)}{view === "competitions" && item.registrationDeadline && <time dateTime={item.registrationDeadline}>报名 {formatDate(item.registrationDeadline)}</time>}{view === "competitions" && item.submissionDeadline && <time dateTime={item.submissionDeadline}>交作品 {formatDate(item.submissionDeadline)}</time>}</span></span><span className="source-label">{item.source}</span><button className="card-arrow" aria-label={`查看详情：${item.title}`} onClick={() => setSelected(item)}><ArrowRight size={17} /></button></div>
     </article>;
   }
 
@@ -479,7 +482,7 @@ export default function RadarApp() {
       {view === "competitions" && <>
         <section className="competition-heading" aria-labelledby="competition-title">
           <div className="competition-title"><span className="stat-icon orange"><Trophy size={24} aria-hidden="true" /></span><h1 id="competition-title">竞赛专区</h1></div>
-          <p>从阿里云天池找 AI 实战赛，在线提交应用、智能体或算法结果。收藏后可下载报名日历提醒。</p>
+          <p>查看天池、魔搭和讯飞 AI 大学堂的线上实战赛，优先展示能做项目交作品的比赛。</p>
         </section>
         <div className="competition-filters" role="group" aria-label="竞赛筛选">
           {COMPETITION_FILTERS.map(({ key, label }) => <button type="button" key={key} className={`filter-chip ${competitionFilter === key ? "active" : ""}`}
@@ -487,7 +490,7 @@ export default function RadarApp() {
         </div>
         <div className="results-header">
           <p role="status">{feed ? <>找到 <strong>{listedCompetitions.length}</strong> 条竞赛通知</> : feedError ? "暂时无法读取竞赛，请稍后刷新。" : "正在读取竞赛…"}
-            {competitionFilter === "ai" && tianchiStatus?.lastSuccessAt && <span> · 天池同步于 {formatDate(tianchiStatus.lastSuccessAt)}</span>}</p>
+            {competitionSnapshot && <span> · 竞赛快照 {formatDate(competitionSnapshot)}</span>}</p>
           <button className="text-button" onClick={() => discoverWith({ available: false, college: false }, "竞赛")}>查看历届通知 <ArrowRight size={15} /></button>
         </div>
         {listedCompetitions.length ? <div className="results-grid">{listedCompetitions.slice(0, cardLimit).map(item => card(item))}</div>

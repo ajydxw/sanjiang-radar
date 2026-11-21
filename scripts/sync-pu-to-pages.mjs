@@ -60,7 +60,8 @@ export function validateCompetitionSnapshot(bytes, startedAt, finishedAt = Date.
       feed.sources.some(source => source.sourceType !== 'competition')) throw new Error('feed-invalid');
   const timestamp = Date.parse(feed.generatedAt);
   if (!Number.isFinite(timestamp) || timestamp < startedAt || timestamp > finishedAt) throw new Error('collection-not-fresh');
-  if (!feed.sources.some(source => source.id === 'competition-tianchi' && ['ok', 'partial'].includes(source.state) &&
+  if (!feed.sources.some(source => ['competition-tianchi', 'competition-modelscope', 'competition-aidaxue'].includes(source.id) &&
+      ['ok', 'partial'].includes(source.state) &&
       Date.parse(source.lastSuccessAt) >= startedAt && Date.parse(source.lastSuccessAt) <= timestamp)) {
     throw new Error('collection-incomplete');
   }
@@ -353,7 +354,7 @@ async function syncCompetitions() {
     stage = 'collect';
     const startedAt = Date.now();
     await save('running');
-    await collect(projectRoot, 4 * minute, 'collect-competitions.mjs', ['--tianchi-only', '--data-dir', runtime]);
+    await collect(projectRoot, 4 * minute, 'collect-competitions.mjs', ['--online-only', '--data-dir', runtime]);
     const bytes = await readFile(snapshot);
     const feed = validateCompetitionSnapshot(bytes, startedAt);
     result.itemCount = feed.items.length;

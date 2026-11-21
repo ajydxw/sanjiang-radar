@@ -19,7 +19,8 @@ const fixtureItems = [0, 1].map(index => ({
   registrationMethod: '查看官方原文', verification: '测试', demo: false,
 }));
 const competitionFixture = { ...fixtureItems[0], id: 'tianchi-test', title: '实战应用挑战赛', category: '竞赛',
-  source: '阿里云天池', sourceType: 'competition', sourcePortal: 'https://tianchi.aliyun.com/competition/', activityType: 'AI大模型赛' };
+  source: '魔搭社区', sourceType: 'competition', sourcePortal: 'https://modelscope.cn/events', activityType: 'AI项目赛',
+  submissionDeadline: '2026-11-05T18:00:00+08:00' };
 const schoolCompetitionFixture = { ...competitionFixture, id: 'school-competition-test', title: '三江学院校内摄影赛',
   source: '三江学院', sourceType: 'school', sourcePortal: 'https://www.sju.edu.cn/', activityType: '比赛', registrationDeadline: '2026-11-22' };
 
@@ -136,7 +137,8 @@ test('竞赛专区直达 AI 实战，并支持校内筛选和导出截止提醒'
   assert.equal(await page.getByRole('dialog').count(), 0);
   assert.equal(await cards.count(), 1);
   assert.ok(await cards.first().getByText(competitionFixture.title, { exact: true }).isVisible());
-  assert.equal(await cards.first().locator('time').getAttribute('datetime'), competitionFixture.registrationDeadline);
+  assert.deepEqual(await cards.first().locator('time').evaluateAll(times => times.map(time => time.dateTime)),
+    [competitionFixture.registrationDeadline, competitionFixture.submissionDeadline]);
   await page.getByRole('button', { name: '校内赛事', exact: true }).click();
   assert.equal(await cards.count(), 1);
   assert.ok(await cards.first().getByText(schoolCompetitionFixture.title, { exact: true }).isVisible());
@@ -145,6 +147,7 @@ test('竞赛专区直达 AI 实战，并支持校内筛选和导出截止提醒'
   await cards.first().getByRole('heading', { name: competitionFixture.title }).click();
   const detail = page.getByRole('dialog');
   assert.equal(await detail.getByRole('link', { name: '查看官方原文' }).getAttribute('href'), competitionFixture.sourcePortal);
+  assert.equal(await detail.getByText('作品提交截止', { exact: true }).count(), 1);
   await detail.getByRole('button', { name: '收藏并设置提醒', exact: true }).click();
   const download = page.waitForEvent('download');
   await detail.getByRole('button', { name: '下载这条信息的日历提醒', exact: true }).click();

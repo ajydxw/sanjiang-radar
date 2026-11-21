@@ -14,6 +14,7 @@ export type Information = {
   description?: string;
   registrationStart?: string;
   registrationDeadline?: string;
+  submissionDeadline?: string;
   eventStart?: string;
   eventEnd?: string;
   location?: string;
@@ -86,7 +87,7 @@ export function isCompetitionOpportunity(item: Information, now: Date): boolean 
 }
 
 export function isAiCompetition(item: Information): boolean {
-  return ["AI大模型赛", "数据算法赛", "工程开发赛"].includes(item.activityType ?? "");
+  return ["AI项目赛", "AI大模型赛", "数据算法赛", "工程开发赛"].includes(item.activityType ?? "");
 }
 
 export function competitionClosingSoon(item: Information, now: Date): boolean {

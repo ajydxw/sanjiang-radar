@@ -16,5 +16,5 @@ $triggers = foreach ($hour in @(9, 17)) {
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 25) -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 $task = 'SanjiangRadar-Competition-AutoPublish'
-Register-ScheduledTask -TaskName $task -Action $action -Trigger $triggers -Principal $principal -Settings $settings -Description 'Refresh public Tianchi competition notices for Sanjiang Radar.' -Force | Out-Null
+Register-ScheduledTask -TaskName $task -Action $action -Trigger $triggers -Principal $principal -Settings $settings -Description 'Refresh public online competition notices for Sanjiang Radar.' -Force | Out-Null
 Get-ScheduledTask -TaskName $task | Select-Object TaskName, State
