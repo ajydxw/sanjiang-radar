@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-21T09:21:06.681Z",
+  "generatedAt": "2026-11-22T01:20:30.349Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -218,6 +218,34 @@
       "firstSeenAt": "2026-11-08T00:21:30.826Z"
     },
     {
+      "id": "competition-tianchi-532532",
+      "title": "征集赛15-智析云荐——基于百炼的智能新闻推荐系统挑战赛",
+      "category": "竞赛",
+      "activityType": "AI大模型赛",
+      "summary": "“智析云荐”面向新闻推荐中的相关性、多样性与可解释性问题，探索推荐算法与百炼大模型协同应用。参赛者围绕用户画像、新闻内容和历史交互，设计召回、排序、多样性控制及解释生成流程，为用户输出有序的20条新闻推荐，并逐条生成不超过150字的推荐理由。赛题采用独立合成数据，从排序精度、推荐多样性、解释质量和推理效率四方面综合评价，鼓励兼顾推荐效果、内容可信与工程实现。",
+      "source": "阿里云天池",
+      "sourceType": "competition",
+      "sourcePortal": "https://tianchi.aliyun.com/competition/entrance/532532/introduction",
+      "publishedAt": "",
+      "registrationStart": "2026-10-21T00:00:00+08:00",
+      "registrationDeadline": "2026-12-01T23:59:59+08:00",
+      "eventStart": "2026-10-21T00:00:00+08:00",
+      "eventEnd": "2026-12-01T23:59:59+08:00",
+      "registrationNote": "作品发布或交卷时间请查看官方赛程。",
+      "registrationMethod": "打开天池官方赛题页，选择报名并查看组队、提交和实名认证要求。",
+      "freshmanAllowed": "unknown",
+      "eligibilityEvidence": null,
+      "colleges": [],
+      "rewardNote": "奖项与费用按官方规则执行，三江学分、积分认定待核验。",
+      "importance": "normal",
+      "verification": "竞赛官方原文",
+      "demo": false,
+      "detailRead": true,
+      "firstSeenAt": "2026-11-21T02:04:38.124Z",
+      "fetchedAt": "2026-11-21T09:20:17.503Z",
+      "sourceAvailable": false
+    },
+    {
       "id": "competition-tianchi-532536",
       "title": "2026 Qoder 高校创造力大赛",
       "category": "竞赛",
@@ -242,7 +270,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T09:20:17.503Z"
+      "fetchedAt": "2026-11-22T01:20:10.316Z"
     },
     {
       "id": "competition-tianchi-532510",
@@ -269,7 +297,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T09:20:17.503Z"
+      "fetchedAt": "2026-11-22T01:20:10.316Z"
     },
     {
       "id": "competition-tianchi-532515",
@@ -296,34 +324,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T09:20:17.503Z"
-    },
-    {
-      "id": "competition-tianchi-532532",
-      "title": "征集赛15-智析云荐——基于百炼的智能新闻推荐系统挑战赛",
-      "category": "竞赛",
-      "activityType": "AI大模型赛",
-      "summary": "“智析云荐”面向新闻推荐中的相关性、多样性与可解释性问题，探索推荐算法与百炼大模型协同应用。参赛者围绕用户画像、新闻内容和历史交互，设计召回、排序、多样性控制及解释生成流程，为用户输出有序的20条新闻推荐，并逐条生成不超过150字的推荐理由。赛题采用独立合成数据，从排序精度、推荐多样性、解释质量和推理效率四方面综合评价，鼓励兼顾推荐效果、内容可信与工程实现。",
-      "source": "阿里云天池",
-      "sourceType": "competition",
-      "sourcePortal": "https://tianchi.aliyun.com/competition/entrance/532532/introduction",
-      "publishedAt": "",
-      "registrationStart": "2026-10-21T00:00:00+08:00",
-      "registrationDeadline": "2026-12-01T23:59:59+08:00",
-      "eventStart": "2026-10-21T00:00:00+08:00",
-      "eventEnd": "2026-12-01T23:59:59+08:00",
-      "registrationNote": "作品发布或交卷时间请查看官方赛程。",
-      "registrationMethod": "打开天池官方赛题页，选择报名并查看组队、提交和实名认证要求。",
-      "freshmanAllowed": "unknown",
-      "eligibilityEvidence": null,
-      "colleges": [],
-      "rewardNote": "奖项与费用按官方规则执行，三江学分、积分认定待核验。",
-      "importance": "normal",
-      "verification": "竞赛官方原文",
-      "demo": false,
-      "detailRead": true,
-      "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-21T09:20:17.503Z"
+      "fetchedAt": "2026-11-22T01:20:10.316Z"
     },
     {
       "id": "competition-modelscope-394",
@@ -355,7 +356,7 @@
         }
       ],
       "firstSeenAt": "2026-11-21T02:31:22.486Z",
-      "fetchedAt": "2026-11-21T09:20:53.771Z"
+      "fetchedAt": "2026-11-22T01:20:21.659Z"
     },
     {
       "id": "competition-modelscope-421",
@@ -387,7 +388,7 @@
         }
       ],
       "firstSeenAt": "2026-11-21T02:31:22.486Z",
-      "fetchedAt": "2026-11-21T09:20:53.771Z"
+      "fetchedAt": "2026-11-22T01:20:21.659Z"
     },
     {
       "id": "competition-aidaxue-cyber-maker-2026",
@@ -411,7 +412,7 @@
       "registrationMethod": "在讯飞 AI 大学堂活动页报名，使用 AStudio 客户端创作并发布作品。",
       "registrationNote": "官网时间轴列创作展示至 12 月 15 日，之后进入评审。FAQ 列活动报名与交作品开放至 12月31日。用于评审的最终提交时间请核对官方页。",
       "firstSeenAt": "2026-11-21T02:31:28.748Z",
-      "fetchedAt": "2026-11-21T02:37:41.738Z"
+      "fetchedAt": "2026-11-22T01:20:30.349Z"
     }
   ],
   "sources": [
@@ -492,10 +493,10 @@
       "name": "阿里云天池",
       "url": "https://tianchi.aliyun.com/competition/",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-21T09:20:08.027Z",
+      "lastAttemptAt": "2026-11-22T01:20:05.626Z",
       "state": "ok",
-      "count": 4,
-      "lastSuccessAt": "2026-11-21T09:20:17.503Z",
+      "count": 3,
+      "lastSuccessAt": "2026-11-22T01:20:10.316Z",
       "error": null
     },
     {
@@ -504,23 +505,23 @@
       "url": "https://modelscope.cn/events",
       "note": "检查赛事首页和已收录的在报项目，读取官方参赛规则。",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-21T09:20:17.503Z",
+      "lastAttemptAt": "2026-11-22T01:20:10.316Z",
       "state": "ok",
       "count": 2,
-      "lastSuccessAt": "2026-11-21T09:20:53.771Z",
+      "lastSuccessAt": "2026-11-22T01:20:21.659Z",
       "error": null
     },
     {
       "id": "competition-aidaxue",
       "name": "讯飞 AI 大学堂",
       "url": "https://www.aidaxue.com/activity/cyber-maker",
-      "note": "本次读取失败，保留上次快照。",
+      "note": "定时核对校园 AI 微应用挑战赛的官方活动页。",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-21T09:20:53.771Z",
-      "state": "failed",
+      "lastAttemptAt": "2026-11-22T01:20:21.659Z",
+      "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-21T02:37:41.738Z",
-      "error": "page.goto: net::ERR_CONNECTION_CLOSED at https://www.aidaxue.com/activity/cyber-maker\nCall log:\n\u001b[2m  - navigating to \"https://www.aidaxue.com/activity/cyber-maker\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      "lastSuccessAt": "2026-11-22T01:20:30.349Z",
+      "error": null
     }
   ]
 }
