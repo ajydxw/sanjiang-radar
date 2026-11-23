@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-22T09:20:49.736Z",
+  "generatedAt": "2026-11-23T01:20:32.136Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -270,7 +270,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-22T09:20:12.342Z"
+      "fetchedAt": "2026-11-23T01:20:10.899Z"
     },
     {
       "id": "competition-tianchi-532510",
@@ -297,7 +297,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-22T09:20:12.342Z"
+      "fetchedAt": "2026-11-23T01:20:10.899Z"
     },
     {
       "id": "competition-tianchi-532515",
@@ -324,7 +324,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-22T09:20:12.342Z"
+      "fetchedAt": "2026-11-23T01:20:10.899Z"
     },
     {
       "id": "competition-modelscope-394",
@@ -356,7 +356,7 @@
         }
       ],
       "firstSeenAt": "2026-11-21T02:31:22.486Z",
-      "fetchedAt": "2026-11-22T09:20:28.769Z"
+      "fetchedAt": "2026-11-23T01:20:25.585Z"
     },
     {
       "id": "competition-modelscope-421",
@@ -388,7 +388,7 @@
         }
       ],
       "firstSeenAt": "2026-11-21T02:31:22.486Z",
-      "fetchedAt": "2026-11-22T09:20:28.769Z"
+      "fetchedAt": "2026-11-23T01:20:25.585Z"
     },
     {
       "id": "competition-aidaxue-cyber-maker-2026",
@@ -412,7 +412,7 @@
       "registrationMethod": "在讯飞 AI 大学堂活动页报名，使用 AStudio 客户端创作并发布作品。",
       "registrationNote": "官网时间轴列创作展示至 12 月 15 日，之后进入评审。FAQ 列活动报名与交作品开放至 12月31日。用于评审的最终提交时间请核对官方页。",
       "firstSeenAt": "2026-11-21T02:31:28.748Z",
-      "fetchedAt": "2026-11-22T01:20:30.349Z"
+      "fetchedAt": "2026-11-23T01:20:32.136Z"
     }
   ],
   "sources": [
@@ -493,10 +493,10 @@
       "name": "阿里云天池",
       "url": "https://tianchi.aliyun.com/competition/",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-22T09:20:08.302Z",
+      "lastAttemptAt": "2026-11-23T01:20:06.464Z",
       "state": "ok",
       "count": 3,
-      "lastSuccessAt": "2026-11-22T09:20:12.342Z",
+      "lastSuccessAt": "2026-11-23T01:20:10.899Z",
       "error": null
     },
     {
@@ -505,23 +505,23 @@
       "url": "https://modelscope.cn/events",
       "note": "检查赛事首页和已收录的在报项目，读取官方参赛规则。",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-22T09:20:12.342Z",
+      "lastAttemptAt": "2026-11-23T01:20:10.899Z",
       "state": "ok",
       "count": 2,
-      "lastSuccessAt": "2026-11-22T09:20:28.769Z",
+      "lastSuccessAt": "2026-11-23T01:20:25.585Z",
       "error": null
     },
     {
       "id": "competition-aidaxue",
       "name": "讯飞 AI 大学堂",
       "url": "https://www.aidaxue.com/activity/cyber-maker",
-      "note": "本次读取失败，保留上次快照。",
+      "note": "定时核对校园 AI 微应用挑战赛的官方活动页。",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-22T09:20:28.769Z",
-      "state": "failed",
+      "lastAttemptAt": "2026-11-23T01:20:25.585Z",
+      "state": "ok",
       "count": 1,
-      "lastSuccessAt": "2026-11-22T01:20:30.349Z",
-      "error": "page.goto: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://www.aidaxue.com/activity/cyber-maker\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      "lastSuccessAt": "2026-11-23T01:20:32.136Z",
+      "error": null
     }
   ]
 }
