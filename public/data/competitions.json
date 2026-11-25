@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-25T01:20:24.241Z",
+  "generatedAt": "2026-11-25T09:20:29.739Z",
   "items": [
     {
       "id": "competition-2baab14146eec3e3",
@@ -270,7 +270,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-25T01:20:09.744Z"
+      "fetchedAt": "2026-11-25T09:20:13.678Z"
     },
     {
       "id": "competition-tianchi-532510",
@@ -297,7 +297,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-25T01:20:09.744Z"
+      "fetchedAt": "2026-11-25T09:20:13.678Z"
     },
     {
       "id": "competition-tianchi-532515",
@@ -324,7 +324,7 @@
       "demo": false,
       "detailRead": true,
       "firstSeenAt": "2026-11-21T02:04:38.124Z",
-      "fetchedAt": "2026-11-25T01:20:09.744Z"
+      "fetchedAt": "2026-11-25T09:20:13.678Z"
     },
     {
       "id": "competition-modelscope-394",
@@ -356,7 +356,7 @@
         }
       ],
       "firstSeenAt": "2026-11-21T02:31:22.486Z",
-      "fetchedAt": "2026-11-25T01:20:23.847Z"
+      "fetchedAt": "2026-11-25T09:20:29.153Z"
     },
     {
       "id": "competition-modelscope-421",
@@ -388,7 +388,7 @@
         }
       ],
       "firstSeenAt": "2026-11-21T02:31:22.486Z",
-      "fetchedAt": "2026-11-25T01:20:23.847Z"
+      "fetchedAt": "2026-11-25T09:20:29.153Z"
     },
     {
       "id": "competition-aidaxue-cyber-maker-2026",
@@ -493,10 +493,10 @@
       "name": "阿里云天池",
       "url": "https://tianchi.aliyun.com/competition/",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-25T01:20:05.704Z",
+      "lastAttemptAt": "2026-11-25T09:20:06.942Z",
       "state": "ok",
       "count": 3,
-      "lastSuccessAt": "2026-11-25T01:20:09.744Z",
+      "lastSuccessAt": "2026-11-25T09:20:13.678Z",
       "error": null
     },
     {
@@ -505,10 +505,10 @@
       "url": "https://modelscope.cn/events",
       "note": "检查赛事首页和已收录的在报项目，读取官方参赛规则。",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-25T01:20:09.744Z",
+      "lastAttemptAt": "2026-11-25T09:20:13.679Z",
       "state": "ok",
       "count": 2,
-      "lastSuccessAt": "2026-11-25T01:20:23.847Z",
+      "lastSuccessAt": "2026-11-25T09:20:29.153Z",
       "error": null
     },
     {
@@ -517,7 +517,7 @@
       "url": "https://www.aidaxue.com/activity/cyber-maker",
       "note": "本次读取失败，保留上次快照。",
       "sourceType": "competition",
-      "lastAttemptAt": "2026-11-25T01:20:23.847Z",
+      "lastAttemptAt": "2026-11-25T09:20:29.153Z",
       "state": "failed",
       "count": 1,
       "lastSuccessAt": "2026-11-24T09:20:51.990Z",
